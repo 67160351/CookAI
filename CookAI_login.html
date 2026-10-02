@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CookAI - ไอเดียเมนูเด็ดจากวัตถุดิบคุณ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Prompt) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex justify-center items-center">
+
+    <!-- Mobile Container Emulator -->
+    <div class="w-full max-w-md bg-white min-h-screen shadow-2xl relative flex flex-col justify-between overflow-x-hidden">
+
+        <!-- ================= SCREEN LOGIN ================= -->
+        <div id="screen-login" class="screen active p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-500/30">
+                    <i class="fa-solid fa-utensils text-white text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">CookAI</h1>
+                <p class="text-gray-400 text-sm mt-1">เข้าสู่ระบบเพื่อเริ่มคิดเมนู</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="login-username" type="text" placeholder="Username"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="login-password" type="password" placeholder="Password"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="login-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleLogin()" id="login-btn"
+                class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-5">
+                ยังไม่มีบัญชี?
+                <button onclick="goToLoginScreen('register')" class="text-orange-600 font-semibold">สมัครสมาชิก</button>
+            </p>
+            <p class="text-center text-sm mt-2">
+                <button onclick="goToLoginScreen('forgot')" class="text-gray-400 hover:text-orange-600">ลืมรหัสผ่าน?</button>
+            </p>
+
+            <div class="mt-6 flex items-center gap-2 justify-center">
+                <i class="fa-solid fa-server text-gray-300 text-xs"></i>
+                <input id="api-base" value="" placeholder="(auto: same domain)"
+                    class="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 focus:outline-none focus:border-orange-300 w-48">
+            </div>
+        </div>
+
+        <!-- ================= SCREEN REGISTER ================= -->
+        <div id="screen-register" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800">สมัครสมาชิก</h1>
+                <p class="text-gray-400 text-sm mt-1">สร้างบัญชีใหม่เพื่อใช้งาน CookAI</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="reg-username" type="text" placeholder="Username (อย่างน้อย 3 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="reg-email" type="email" placeholder="Email (ไม่บังคับ)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="reg-password" type="password" placeholder="Password (อย่างน้อย 6 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="register-error" class="text-red-500 text-xs mb-3 hidden"></p>
+            <p id="register-success" class="text-green-600 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleRegister()" id="register-btn"
+                class="w-full py-3.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> สมัครสมาชิก
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-5">
+                มีบัญชีอยู่แล้ว?
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">เข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN FORGOT PASSWORD ================= -->
+        <div id="screen-forgot" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-key text-orange-500 text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">ลืมรหัสผ่าน</h1>
+                <p class="text-gray-400 text-sm mt-1 px-4">กรอก username ของบัญชีคุณ ระบบจะสร้างรหัสสำหรับตั้งรหัสผ่านใหม่ให้</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="forgot-username" type="text" placeholder="Username"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="forgot-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleForgotPassword()" id="forgot-btn"
+                class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> ขอรีเซ็ตรหัสผ่าน
+            </button>
+
+            <!-- กล่องแสดงผลลัพธ์ + reset token (เฉพาะโหมด demo เพราะยังไม่มีระบบส่งอีเมลจริง) -->
+            <div id="forgot-result" class="hidden mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                <p class="text-gray-600 mb-2" id="forgot-message"></p>
+                <div id="forgot-token-box" class="hidden">
+                    <p class="text-[11px] text-gray-400 mb-1">Reset token (โหมดทดสอบ — ระบบจริงจะส่งให้ทางอีเมลแทน):</p>
+                    <p id="forgot-token-value" class="text-[11px] font-mono bg-white border border-amber-100 rounded-lg p-2 break-all"></p>
+                    <button onclick="goToResetWithToken()" class="w-full mt-3 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg">
+                        ไปตั้งรหัสผ่านใหม่ →
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-center text-sm text-gray-400 mt-6">
+                นึกออกแล้ว?
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">กลับไปเข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN RESET PASSWORD ================= -->
+        <div id="screen-reset" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-lock-open text-orange-500 text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">ตั้งรหัสผ่านใหม่</h1>
+                <p class="text-gray-400 text-sm mt-1">กรอก reset token ที่ได้ และรหัสผ่านใหม่ของคุณ</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="reset-token" type="text" placeholder="Reset token"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-orange-500">
+                <input id="reset-new-password" type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="reset-error" class="text-red-500 text-xs mb-3 hidden"></p>
+            <p id="reset-success" class="text-green-600 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleResetPassword()" id="reset-btn"
+                class="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check"></i> ยืนยันรหัสผ่านใหม่
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-6">
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">กลับไปเข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN 1: DASHBOARD ================= -->
+        <div id="screen-1" class="screen p-6">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <p class="text-gray-400 text-sm">วันนี้ทำอะไรกินดี? 👨‍🍳</p>
+                    <h1 id="dashboard-username" class="text-2xl font-bold text-gray-800">ห้องครัวของน้องบาส</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="dashboard-avatar" class="w-12 h-12 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">B</div>
+                    <button onclick="showLogoutConfirm()" title="ออกจากระบบ" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all shadow-sm">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Menu Category Tabs -->
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2 px-0.5">เมนูแนะนำ</h3>
+                <div class="flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none;" id="menu-tabs">
+                    <button onclick="selectMenuCategory(this)" data-menu="ทั้งหมด" class="menu-tab active shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-orange-500 text-white shadow-sm transition-colors">ทั้งหมด</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="กะเพรา" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🌶️ กะเพรา</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ข้าวผัด" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍚 ข้าวผัด</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ไข่เจียว" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍳 ไข่เจียว</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ต้มยำ" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍲 ต้มยำ</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ผัดไทย" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍜 ผัดไทย</button>
+                </div>
+            </div>
+            
+            <!-- Recipe Detail Card (โผล่มาเมื่อกดแท็บเมนูที่ไม่ใช่ "ทั้งหมด") -->
+            <div id="recipe-detail-card" class="hidden bg-white border border-orange-100 rounded-2xl p-4 mb-6 shadow-sm">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <p class="text-[10px] font-bold text-orange-500 uppercase" id="recipe-tag-label">เมนู</p>
+                        <h3 id="recipe-name" class="text-lg font-bold text-gray-800 mt-0.5">-</h3>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <span class="text-[11px] bg-gray-50 text-gray-500 px-2 py-1 rounded-lg flex items-center gap-1">
+                            <i class="fa-regular fa-clock"></i> <span id="recipe-time">-</span>
+                        </span>
+                        <span class="text-[11px] bg-gray-50 text-gray-500 px-2 py-1 rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-utensils"></i> <span id="recipe-servings">-</span>
+                        </span>
+                    </div>
+                </div>
+
+                <p class="text-xs font-semibold text-gray-500 mb-1.5">วัตถุดิบ (ต่อ 1 ที่)</p>
+                <ul id="recipe-ingredients" class="text-sm text-gray-600 space-y-1 mb-4 list-disc list-inside"></ul>
+
+                <p class="text-xs font-semibold text-gray-500 mb-1.5">วิธีทำ</p>
+                <ol id="recipe-steps" class="text-sm text-gray-600 space-y-1.5 list-decimal list-inside"></ol>
+            </div>
+
+            <!-- Recipe Inspiration Card -->
+            <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-4 text-white mb-6 shadow-lg shadow-orange-500/20">
+                <div class="flex justify-between items-start gap-3">
+                    <div class="min-w-0">
+                        <span class="bg-white/20 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">ไอเดียประจำวัน</span>
+                        <p id="daily-idea-title" class="text-lg font-bold mt-1">"เปลี่ยนไข่ไก่ก้นตู้ ให้เป็นเมนูระดับเชฟ" 🍳</p>
+                        <p id="daily-idea-subtitle" class="text-xs opacity-80 mt-1">สแกนดูเลยว่าวัตถุดิบในมือคุณทำอะไรได้บ้าง</p>
+                    </div>
+                    <button onclick="nextDailyIdea()" title="ไอเดียถัดไป" class="shrink-0 w-9 h-9 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors active:scale-95">
+                        <i class="fa-solid fa-chevron-right text-sm"></i>
+                    </button>
+                </div>
+                <div id="daily-idea-dots" class="flex gap-1.5 mt-3"></div>
+            </div>
+
+            <!-- Stats/Cooking Level -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-amber-50/50 border border-amber-100 p-3 rounded-xl text-center">
+                    <p class="text-gray-400 text-[10px] font-medium">เมนูที่เคยทำแล้ว</p>
+                    <p class="text-xl font-bold text-amber-600 mt-0.5">14 เมนู</p>
+                </div>
+                <div class="bg-orange-50/50 border border-orange-100 p-3 rounded-xl text-center">
+                    <p class="text-gray-400 text-[10px] font-medium">ระดับฝีมือ</p>
+                    <p class="text-xl font-bold text-orange-600 mt-0.5">พ่อครัวฝึกหัด ⭐</p>
+                </div>
+            </div>
+
+            <div class="text-center my-6">
+                <div class="w-28 h-28 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-wand-magic-sparkles text-orange-500 text-4xl"></i>
+                </div>
+                <h2 class="text-base font-semibold text-gray-700">คิดเมนูไม่ออกใช่ไหม?</h2>
+                <p class="text-gray-400 text-xs px-8 mt-1">หยิบวัตถุดิบทั้งหมดที่มีมาวางรวมกัน แล้วเปิดกล้องถ่ายรูปได้เลย!</p>
+            </div>
+
+            <button onclick="goToScreen(2)" class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-camera text-lg"></i>
+                ถ่ายรูปคิดสูตรอาหาร
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 2: CAMERA SCANNER ================= -->
+        <div id="screen-2" class="screen bg-zinc-950 text-white p-6 h-full flex flex-col justify-between min-h-screen">
+            <div class="flex justify-between items-center">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+                <span class="text-sm font-medium">ส่องกล้องไปที่วัตถุดิบของคุณ</span>
+                <div class="w-10"></div>
+            </div>
+
+            <!-- Mock Camera Viewport -->
+            <div class="my-6 border-2 border-dashed border-orange-500/40 rounded-3xl flex-1 flex items-center justify-center bg-zinc-900 relative min-h-[385px]">
+                <div class="absolute inset-6 border border-white/10 rounded-2xl pointer-events-none"></div>
+                <div class="text-center px-6 opacity-50">
+                    <i class="fa-solid fa-wheat-awn text-4xl mb-2 text-amber-400"></i>
+                    <p class="text-xs">จับคู่วัตถุดิบได้ไม่จำกัดชิ้น</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center items-center gap-8 mb-6">
+                <div class="w-10"></div>
+                <button onclick="goToScreen(3)" class="w-20 h-20 bg-white p-1 rounded-full shadow-lg">
+                    <div class="w-full h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full flex items-center justify-center border-4 border-zinc-950"></div>
+                </button>
+                <button class="text-white/60 hover:text-white"><i class="fa-solid fa-images text-xl"></i></button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 3: VERIFY TAGS ================= -->
+        <div id="screen-3" class="screen p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-2">🔍 วัตถุดิบที่ตรวจพบในมือคุณ</h2>
+            <p class="text-xs text-gray-400 mb-6">ปรับแต่งรายการวัตถุดิบเพื่อให้ AI คำนวณสูตรได้อร่อยตรงใจที่สุด</p>
+
+            <!-- Detected Tags Container -->
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 min-h-[120px] mb-4 flex flex-wrap gap-2 items-start" id="tags-container">
+                <span class="bg-orange-50 text-orange-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-200/50 flex items-center gap-2">
+                    🐖 หมูสับ <button class="hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </span>
+                <span class="bg-orange-50 text-orange-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-200/50 flex items-center gap-2">
+                    🥚 ไข่ไก่ <button class="hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </span>
+                <span class="bg-orange-50 text-orange-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-200/50 flex items-center gap-2">
+                    🌱 ต้นหอม <button class="hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </span>
+            </div>
+
+            <!-- Add Tag Input -->
+            <div class="flex gap-2 mb-6">
+                <input type="text" placeholder="พิมพ์เพิ่มวัตถุดิบเอง เช่น พริกขี้หนู..." class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <button class="px-4 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-700">เพิ่ม</button>
+            </div>
+
+            <button onclick="goToScreen(4)" class="w-full py-3.5 bg-gray-900 text-white font-semibold rounded-xl text-sm hover:bg-gray-800 transition-all text-center block">
+                ถัดไป (ระบุรสชาติที่อยากกิน)
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 4: FILTER SETTINGS ================= -->
+        <div id="screen-4" class="screen p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-1">🌶️ ปรับแต่งรสชาติ & สไตล์</h2>
+            <p class="text-xs text-gray-400 mb-6">เลือกสไตล์การทำอาหารที่คุณชอบในมื้อนี้</p>
+
+            <!-- Condiments Selection -->
+            <div class="mb-6">
+                <label class="text-sm font-semibold text-gray-700 block mb-2">ประเภทอาหารที่อยากกิน:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" checked class="accent-orange-500"> อาหารจานเดียว ง่ายๆ
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" class="accent-orange-500"> กับข้าวจานเด็ด
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" class="accent-orange-500"> เมนูกับแกล้ม / ทานเล่น
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" class="accent-orange-500"> เมนูเส้น / ซุปร้อนๆ
+                    </label>
+                </div>
+            </div>
+
+            <!-- Diet Preference -->
+            <div class="mb-8">
+                <label class="text-sm font-semibold text-gray-700 block mb-2">ข้อจำกัดด้านรสชาติ:</label>
+                <div class="space-y-2">
+                    <label class="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+                        <span class="text-xs text-gray-600">🌶️ เน้นรสจัดจ้าน / แซ่บ</span>
+                        <input type="checkbox" checked class="accent-orange-500">
+                    </label>
+                    <label class="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+                        <span class="text-xs text-gray-600">🥦 เน้นเมนูเพื่อสุขภาพ (คลีน)</span>
+                        <input type="checkbox" class="accent-orange-500">
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="goToScreen(5)" class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 text-center block">
+                ✨ ครีเอตเมนูเด็ดเลย!
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 5: RECIPE OPTIONS ================= -->
+        <div id="screen-5" class="screen p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-1">💡 ครีเอตสูตรอาหารสำเร็จ!</h2>
+            <p class="text-xs text-gray-400 mb-6">นี่คือเมนูสุดสร้างสรรค์ที่เข้ากับวัตถุดิบของคุณมากที่สุด</p>
+
+            <!-- Recipe List -->
+            <div class="space-y-4">
+                <!-- Recipe Card 1 -->
+                <div onclick="goToScreen(6)" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-orange-400 transition-all cursor-pointer flex gap-4">
+                    <div class="w-20 h-20 bg-orange-100 rounded-xl flex items-center justify-center text-orange-500 text-3xl shrink-0">🍳</div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm">ข้าวไข่ข้นต้มยำแห้งหมูสับ</h3>
+                        <p class="text-gray-400 text-[11px] line-clamp-1 mt-0.5">การผสมผสานสุดลงตัว ได้ความนุ่มของไข่ข้นและความแซ่บของต้มยำ</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-md font-medium">⏱️ 15 นาที</span>
+                            <span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-md">⭐ มือใหม่ทำได้</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recipe Card 2 -->
+                <div onclick="goToScreen(6)" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-orange-400 transition-all cursor-pointer flex gap-4">
+                    <div class="w-20 h-20 bg-amber-100 rounded-xl flex items-center justify-center text-amber-500 text-3xl shrink-0">🍲</div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm">แกงจืดไข่น้ำหมูสับสอดไส้</h3>
+                        <p class="text-gray-400 text-[11px] line-clamp-1 mt-0.5">ซุปร้อนๆ ซดคล่องคอ เปลี่ยนไข่เจียวธรรมดามาทำเป็นน้ำซุปเข้มข้น</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-md">⏱️ 20 นาที</span>
+                            <span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-md">⭐ ง่าย</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 6: RECIPE OVERVIEW ================= -->
+        <div id="screen-6" class="screen">
+            <div class="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 rounded-b-3xl shadow-lg relative">
+                <button onclick="goToScreen(5)" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mb-4"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+                <h1 class="text-xl font-bold mb-1">ข้าวไข่ข้นต้มยำแห้งหมูสับ</h1>
+                <p class="text-xs opacity-90 mb-4">สูตรพิเศษโดยเชฟ AI: อร่อยนัว เข้มข้นสะใจ สไตล์เด็กหอ</p>
+                <div class="flex gap-3 text-[11px] font-semibold">
+                    <span class="bg-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i> 15 นาที</span>
+                    <span class="bg-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-fire mr-1"></i> ความยาก: ง่าย</span>
+                </div>
+            </div>
+
+            <!-- Ingredient Section -->
+            <div class="p-6">
+                <h2 class="text-sm font-bold text-gray-800 mb-3"><i class="fa-solid fa-mortar-pestle text-orange-500 mr-1"></i> สัดส่วนและเครื่องปรุงที่ต้องเตรียม</h2>
+                <div class="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100 text-xs text-gray-600">
+                    <div class="flex justify-between border-b border-gray-200/40 pb-2"><span>🥚 ไข่ไก่ (วัตถุดิบของคุณ)</span><span class="font-bold text-gray-800">2 ฟอง</span></div>
+                    <div class="flex justify-between border-b border-gray-200/40 pb-2"><span>🐖 หมูสับ (วัตถุดิบของคุณ)</span><span class="font-bold text-gray-800">100 กรัม</span></div>
+                    <div class="flex justify-between border-b border-gray-200/40 pb-2"><span>🌱 ต้นหอมซอย (วัตถุดิบของคุณ)</span><span class="font-bold text-gray-800">1 ต้น</span></div>
+                    <div class="flex justify-between border-b border-gray-200/40 pb-2"><span>🍯 น้ำพริกเผา (เครื่องปรุงติดห้อง)</span><span class="font-bold text-gray-800">1 ช้อนโต๊ะ</span></div>
+                    <div class="flex justify-between"><span>🍋 มะนาว (เครื่องปรุงติดห้อง)</span><span class="font-bold text-gray-800">1 ซีก</span></div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0">
+                <button onclick="goToScreen(7)" class="w-full py-4 bg-orange-500 text-white font-bold rounded-xl text-center shadow-lg shadow-orange-500/20">
+                    🍳 เข้าสู่โหมดทำอาหาร (Cook Mode)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 7: COOK MODE (STEP-BY-STEP) ================= -->
+        <div id="screen-7" class="screen p-6 flex flex-col justify-between min-h-screen">
+            <div>
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full">ขั้นตอนทำอาหาร 3 / 4</span>
+                    <!-- Sound/Voice Assistant Icon -->
+                    <button class="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 text-sm hover:bg-orange-100 hover:text-orange-500"><i class="fa-solid fa-volume-high"></i></button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-gray-100 h-2 rounded-full mb-8">
+                    <div class="bg-orange-500 h-2 rounded-full" style="width: 75%;"></div>
+                </div>
+
+                <!-- BIG STEP TEXT FOR KITCHEN USE -->
+                <div class="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-center shadow-sm my-4">
+                    <p class="text-xl font-bold text-gray-800 leading-relaxed">
+                        "ตั้งกระทะไฟอ่อน เทส่วนผสมไข่ลงไป ใช้ตะหลิวขูดขอบเข้าหาตรงกลางช้าๆ พอเนื้อไข่เริ่มจับตัวเป็นครีมข้นเยิ้ม ให้ปิดเตาแก๊สทันที"
+                    </p>
+                </div>
+
+                <div class="bg-amber-50 rounded-xl p-3 border border-amber-100 text-amber-800 text-xs flex gap-2 mt-4">
+                    <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+                    <span>**เคล็ดลับเชฟ:** ความร้อนสะสมในกระทะจะทำให้ไข่สุกต่ออีกนิดหลังปิดไฟ ถ้าปิดไฟช้าไข่จะแข็งเกินไปจนไม่ข้นน้า!</span>
+                </div>
+            </div>
+
+            <!-- Bottom Control Bars -->
+            <div class="flex gap-3 mt-8">
+                <button onclick="goToScreen(6)" class="flex-1 py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">ย้อนดูวัตถุดิบ</button>
+                <button onclick="goToScreen(8)" class="flex-1 py-3.5 bg-orange-500 text-white font-bold rounded-xl text-sm shadow-md">ทำเสร็จเรียบร้อย</button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 8: SUCCESS / SHARE ================= -->
+        <div id="screen-8" class="screen p-6 text-center">
+            <div class="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto my-8 text-4xl shadow-inner">
+                🍽️
+            </div>
+            
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">มื้ออร่อยพร้อมเสิร์ฟ!</h1>
+            <p class="text-gray-400 text-xs px-6 mb-8">ทำเสร็จทันใจด้วยวัตถุดิบก้นตู้เย็นของคุณเอง</p>
+
+            <!-- Cooking Score / Rating Card -->
+            <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center max-w-xs mx-auto mb-8">
+                <p class="text-xs text-gray-500 mb-2">ให้คะแนนความอร่อยของสูตรนี้</p>
+                <div class="flex justify-center gap-1.5 text-amber-400 text-lg mb-1">
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-regular fa-star"></i>
+                </div>
+                <span class="text-[11px] text-gray-400">บันทึกประวัติความอร่อยแล้ว</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <button class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl text-sm shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bookmark"></i> บันทึกลงสมุดสูตรส่วนตัว
+                </button>
+                <button onclick="goToScreen(1)" class="w-full py-3.5 bg-gray-950 text-white font-semibold rounded-xl text-sm hover:bg-gray-800">
+                    ออกไปหน้าแรก
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= LOGOUT CONFIRM MODAL ================= -->
+        <div id="logout-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
+                <div class="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-1">ออกจากระบบ?</h3>
+                <p class="text-gray-400 text-sm mb-6">คุณต้องการออกจากระบบตอนนี้ใช่ไหม</p>
+                <div class="flex gap-3">
+                    <button onclick="hideLogoutConfirm()" class="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm hover:bg-gray-200 transition-colors">ยกเลิก</button>
+                    <button onclick="confirmLogout()" class="flex-1 py-3 bg-red-500 text-white font-semibold rounded-xl text-sm hover:bg-red-600 transition-colors">ออกจากระบบ</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script to simulate Routing/Screen Switching -->
+    <script>
+        // แสดงเฉพาะ screen เป้าหมาย ซ่อน screen อื่นทั้งหมดแบบเด็ดขาด
+        // ใช้ el.style.display ตรงๆ (inline style) แทนการพึ่ง CSS class เพียงอย่างเดียว
+        // เพราะ inline style ชนะทุก CSS rule เสมอ ไม่มีทางถูก Tailwind หรือ CSS อื่นแย่ง priority ไปได้
+        function showOnlyScreen(el) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+                screen.style.display = 'none';
+            });
+            el.classList.add('active');
+            // screen ไหนใช้ flex-col ให้คง display เป็น flex ไว้ ไม่งั้น layout จะเพี้ยน
+            el.style.display = el.classList.contains('flex') ? 'flex' : 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function showLogoutConfirm() {
+            document.getElementById('logout-modal').classList.remove('hidden');
+        }
+        function hideLogoutConfirm() {
+            document.getElementById('logout-modal').classList.add('hidden');
+        }
+        function confirmLogout() {
+            hideLogoutConfirm();
+            handleLogout();
+        }
+
+        function selectMenuCategory(el) {
+            document.querySelectorAll('.menu-tab').forEach(tab => {
+                tab.classList.remove('active', 'bg-orange-500', 'text-white', 'shadow-sm');
+                tab.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            el.classList.add('active', 'bg-orange-500', 'text-white', 'shadow-sm');
+            el.classList.remove('bg-gray-100', 'text-gray-600');
+
+            showRecipeForCategory(el.dataset.menu);
+        }
+
+        // ---------- ข้อมูลสูตรอาหาร (mock data สำหรับ demo — ยังไม่ได้มาจาก AI จริง) ----------
+        const recipesData = {
+            'กะเพรา': {
+                name: 'กะเพราหมูสับไข่ดาว',
+                time: '15 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'หมูสับ 150 กรัม',
+                    'ใบกะเพรา 1 กำมือ',
+                    'พริกขี้หนู 5-8 เม็ด (ซอย)',
+                    'กระเทียม 4 กลีบ (สับ)',
+                    'ซอสหอยนางรม 1.5 ช้อนโต๊ะ',
+                    'ซีอิ๊วขาว 1 ช้อนโต๊ะ',
+                    'น้ำตาลทราย 1 ช้อนชา',
+                    'ไข่ไก่ 1 ฟอง',
+                    'น้ำมันพืช 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะไฟแรง ใส่น้ำมัน 1 ช้อนโต๊ะ ผัดกระเทียม-พริกให้หอม',
+                    'ใส่หมูสับ ผัดจนสุกและแตกเป็นเม็ด ๆ',
+                    'ปรุงรสด้วยซอสหอยนางรม ซีอิ๊วขาว น้ำตาล ผัดให้เข้ากัน',
+                    'ใส่ใบกะเพรา ผัดไฟแรงเร็ว ๆ แล้วปิดไฟ',
+                    'ทอดไข่ดาวแยกในกระทะอีกใบ ราดบนข้าวสวยพร้อมเสิร์ฟ',
+                ],
+            },
+            'ข้าวผัด': {
+                name: 'ข้าวผัดหมูใส่ไข่',
+                time: '12 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'ข้าวสวย (ค้างคืนยิ่งดี) 1.5 ถ้วย',
+                    'หมูสับหรือหมูหั่นชิ้น 100 กรัม',
+                    'ไข่ไก่ 1 ฟอง',
+                    'กระเทียม 3 กลีบ (สับ)',
+                    'ต้นหอม 1 ต้น (หั่นท่อน)',
+                    'ซีอิ๊วขาว 1 ช้อนโต๊ะ',
+                    'ซอสปรุงรส 1 ช้อนชา',
+                    'น้ำมันพืช 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะไฟแรง ใส่น้ำมัน ผัดกระเทียมให้หอม',
+                    'ใส่หมูผัดจนสุก ดันไปข้างกระทะ ตอกไข่ลงผัดให้กระจาย',
+                    'ใส่ข้าวสวย คลุกให้เข้ากัน ผัดจนข้าวร้อนทั่วและไม่ติดกระทะ',
+                    'ปรุงรสด้วยซีอิ๊วขาวและซอสปรุงรส ผัดให้เข้าสีทั่วเม็ดข้าว',
+                    'ใส่ต้นหอม ผัดเร็ว ๆ อีกครั้งแล้วปิดไฟ เสิร์ฟพร้อมมะนาว',
+                ],
+            },
+            'ไข่เจียว': {
+                name: 'ไข่เจียวหมูสับฟูนุ่ม',
+                time: '8 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'ไข่ไก่ 2 ฟอง',
+                    'หมูสับ 50 กรัม (ใส่หรือไม่ใส่ก็ได้)',
+                    'น้ำปลา 1 ช้อนชา',
+                    'ต้นหอมซอย 1 ช้อนโต๊ะ (ถ้ามี)',
+                    'น้ำมันพืชสำหรับทอด 4-5 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตีไข่กับน้ำปลาและหมูสับให้เข้ากัน ตีแรง ๆ ให้มีฟองอากาศ (เคล็ดลับให้ไข่ฟู)',
+                    'ตั้งกระทะใส่น้ำมันให้ร้อนจัด (สำคัญมาก ไม่งั้นไข่จะไม่ฟู)',
+                    'เทไข่ลงตรงกลางกระทะทีเดียว รอให้ขอบไข่เริ่มฟูและเปลี่ยนสี',
+                    'พลิกด้านเมื่อเหลืองกรอบ ทอดอีกด้านจนสุกทั่ว ตักขึ้นสะเด็ดน้ำมัน',
+                ],
+            },
+            'ต้มยำ': {
+                name: 'ต้มยำกุ้งน้ำข้น',
+                time: '25 นาที',
+                servings: '2 ที่',
+                ingredients: [
+                    'กุ้งสด 8-10 ตัว',
+                    'เห็ดฟาง 1 ถ้วย (ผ่าครึ่ง)',
+                    'ตะไคร้ 2 ต้น (ทุบหั่นท่อน)',
+                    'ข่า 4-5 แว่น',
+                    'ใบมะกรูด 4-5 ใบ (ฉีก)',
+                    'พริกขี้หนู 8-10 เม็ด (ทุบ)',
+                    'น้ำพริกเผา 2 ช้อนโต๊ะ',
+                    'นมข้นจืดหรือกะทิ 1/2 ถ้วย',
+                    'น้ำปลา + น้ำมะนาว อย่างละ 2-3 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ต้มน้ำเปล่า 3 ถ้วยให้เดือด ใส่ตะไคร้ ข่า ใบมะกรูด ต้มให้หอม',
+                    'ใส่เห็ดฟางและกุ้ง ต้มจนกุ้งเริ่มเปลี่ยนสี',
+                    'ใส่น้ำพริกเผาและนมข้นจืด คนให้ละลายเข้ากัน',
+                    'ปรุงรสด้วยน้ำปลา ใส่พริกขี้หนูทุบ ต้มต่ออีกครู่',
+                    'ปิดไฟ บีบมะนาวสด คนเบา ๆ แล้วตักเสิร์ฟทันที',
+                ],
+            },
+            'ผัดไทย': {
+                name: 'ผัดไทยกุ้งสด',
+                time: '20 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'เส้นจันท์แช่น้ำนิ่ม 150 กรัม',
+                    'กุ้งสด 5-6 ตัว',
+                    'เต้าหู้เหลือง 1/4 ถ้วย (หั่นเต๋า)',
+                    'ไข่ไก่ 1 ฟอง',
+                    'ถั่วงอก 1 ถ้วย',
+                    'ใบกุยช่าย 4-5 ต้น (หั่นท่อน)',
+                    'ซอสผัดไทย (มะขามเปียก น้ำตาลปี๊บ น้ำปลา) 3 ช้อนโต๊ะ',
+                    'ถั่วลิสงป่น 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะใส่น้ำมัน ผัดกุ้งและเต้าหู้จนสุกหอม ตักพักไว้',
+                    'ใส่เส้นจันท์ลงผัดพร้อมซอสผัดไทย ผัดจนเส้นนิ่มดูดซอสเข้าเนื้อ',
+                    'ดันเส้นไปข้างกระทะ ตอกไข่ลงผัดให้สุก แล้วคลุกรวมกับเส้น',
+                    'ใส่กุ้ง เต้าหู้ ถั่วงอก ใบกุยช่าย ผัดเร็ว ๆ ให้เข้ากัน',
+                    'โรยถั่วลิสงป่น เสิร์ฟพร้อมถั่วงอกสดและมะนาว',
+                ],
+            },
+        };
+
+        function showRecipeForCategory(menu) {
+            const card = document.getElementById('recipe-detail-card');
+            const recipe = recipesData[menu];
+
+            if (!recipe) {
+                // เลือก "ทั้งหมด" หรือเมนูที่ยังไม่มีข้อมูล → ซ่อนการ์ดสูตร
+                card.classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('recipe-tag-label').textContent = menu;
+            document.getElementById('recipe-name').textContent = recipe.name;
+            document.getElementById('recipe-time').textContent = recipe.time;
+            document.getElementById('recipe-servings').textContent = recipe.servings;
+
+            const ingredientsEl = document.getElementById('recipe-ingredients');
+            ingredientsEl.innerHTML = recipe.ingredients.map(i => '<li>' + i + '</li>').join('');
+
+            const stepsEl = document.getElementById('recipe-steps');
+            stepsEl.innerHTML = recipe.steps.map(s => '<li>' + s + '</li>').join('');
+
+            card.classList.remove('hidden');
+        }
+
+        // ---------- ไอเดียประจำวัน (สลับได้หลายข้อความ) ----------
+        const dailyIdeas = [
+            { title: '"เปลี่ยนไข่ไก่ก้นตู้ ให้เป็นเมนูระดับเชฟ" 🍳', subtitle: 'สแกนดูเลยว่าวัตถุดิบในมือคุณทำอะไรได้บ้าง' },
+            { title: '"เหลือข้าวสวยค้างคืน อย่าทิ้ง!" 🍚', subtitle: 'เอามาผัดข้าวหอม ๆ ได้ง่ายกว่าที่คิด' },
+            { title: '"หมูสับแช่แข็งชิ้นสุดท้าย ทำอะไรดี?" 🐷', subtitle: 'กะเพราหรือลูกชิ้นทอด เลือกได้ตามใจ' },
+            { title: '"ผักในตู้เย็นใกล้เหี่ยว รีบจัดการก่อนสาย" 🥬', subtitle: 'ผัดรวมมิตรง่าย ๆ ได้ใน 10 นาที' },
+        ];
+        let dailyIdeaIndex = 0;
+
+        function renderDailyIdea() {
+            const idea = dailyIdeas[dailyIdeaIndex];
+            document.getElementById('daily-idea-title').textContent = idea.title;
+            document.getElementById('daily-idea-subtitle').textContent = idea.subtitle;
+
+            const dotsEl = document.getElementById('daily-idea-dots');
+            dotsEl.innerHTML = dailyIdeas
+                .map((_, i) => '<span class="h-1.5 rounded-full transition-all ' +
+                    (i === dailyIdeaIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40') + '"></span>')
+                .join('');
+        }
+
+        function nextDailyIdea() {
+            dailyIdeaIndex = (dailyIdeaIndex + 1) % dailyIdeas.length;
+            renderDailyIdea();
+        }
+
+        function goToScreen(screenNumber) {
+            const target = document.getElementById('screen-' + screenNumber);
+            // ด่านป้องกัน: ห้ามเข้าหน้าแอป (screen 1-8) ถ้ายังไม่ได้ login
+            if (!currentToken) {
+                goToLoginScreen('login');
+                return;
+            }
+            showOnlyScreen(target);
+        }
+
+        // ---------- เชื่อมกับ CookAI API (login / register / logout) ----------
+        let currentToken = null; // เก็บ token ไว้ใน memory เท่านั้น รีเฟรชหน้าแล้วต้อง login ใหม่
+
+        function apiBase() {
+            const v = document.getElementById('api-base').value.trim();
+            return (v || window.location.origin).replace(/\/$/, '');
+        }
+
+        function goToLoginScreen(name) {
+            showOnlyScreen(document.getElementById('screen-' + name));
+        }
+
+        function showFieldError(elId, msg) {
+            const el = document.getElementById(elId);
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function hideFieldError(elId) {
+            document.getElementById(elId).classList.add('hidden');
+        }
+
+        async function handleRegister() {
+            hideFieldError('register-error');
+            document.getElementById('register-success').classList.add('hidden');
+
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+
+            if (username.length < 3 || password.length < 6) {
+                showFieldError('register-error', 'username ต้อง >= 3 ตัวอักษร และ password ต้อง >= 6 ตัวอักษร');
+                return;
+            }
+
+            const btn = document.getElementById('register-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสมัคร...';
+
+            try {
+                const res = await fetch(apiBase() + '/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, email: email || null })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('register-error', data.detail || 'สมัครไม่สำเร็จ');
+                } else {
+                    document.getElementById('register-success').textContent = 'สมัครสำเร็จ! กำลังพาไปหน้าเข้าสู่ระบบ...';
+                    document.getElementById('register-success').classList.remove('hidden');
+                    document.getElementById('login-username').value = username;
+                    setTimeout(() => goToLoginScreen('login'), 900);
+                }
+            } catch (e) {
+                showFieldError('register-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> สมัครสมาชิก';
+            }
+        }
+
+        async function handleLogin() {
+            hideFieldError('login-error');
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (!username || !password) {
+                showFieldError('login-error', 'กรอก username และ password ให้ครบ');
+                return;
+            }
+
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ...';
+
+            try {
+                const res = await fetch(apiBase() + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('login-error', data.detail || 'เข้าสู่ระบบไม่สำเร็จ');
+                    return;
+                }
+                currentToken = data.access_token;
+                await loadProfileIntoDashboard();
+                goToScreen(1); // เข้าแอปจริง ไปหน้า Dashboard (screen-1 เดิมของ CookAI)
+            } catch (e) {
+                showFieldError('login-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ';
+            }
+        }
+
+        async function loadProfileIntoDashboard() {
+            const res = await fetch(apiBase() + '/me', {
+                headers: { 'Authorization': 'Bearer ' + currentToken }
+            });
+            const user = await res.json();
+            if (!res.ok) return;
+
+            document.getElementById('dashboard-username').textContent = 'ห้องครัวของ ' + user.username;
+            document.getElementById('dashboard-avatar').textContent = user.username.charAt(0).toUpperCase();
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(apiBase() + '/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + currentToken }
+                });
+            } catch (e) {
+                // แม้ logout ที่ server ไม่สำเร็จ ก็เคลียร์ token ฝั่ง client อยู่ดี
+            }
+            currentToken = null;
+            document.getElementById('login-password').value = '';
+            goToLoginScreen('login');
+        }
+
+        // ---------- ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่ ----------
+        async function handleForgotPassword() {
+            hideFieldError('forgot-error');
+            document.getElementById('forgot-result').classList.add('hidden');
+            document.getElementById('forgot-token-box').classList.add('hidden');
+
+            const username = document.getElementById('forgot-username').value.trim();
+            if (!username) {
+                showFieldError('forgot-error', 'กรอก username ก่อนครับ');
+                return;
+            }
+
+            const btn = document.getElementById('forgot-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งคำขอ...';
+
+            try {
+                const res = await fetch(apiBase() + '/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('forgot-error', data.detail || 'ขอรีเซ็ตรหัสผ่านไม่สำเร็จ');
+                    return;
+                }
+
+                document.getElementById('forgot-message').textContent = data.message;
+                document.getElementById('forgot-result').classList.remove('hidden');
+
+                if (data.reset_token) {
+                    // โหมด demo: ระบบยังไม่มีการส่งอีเมลจริง เลยโชว์ token ให้ในหน้าเว็บเลย
+                    document.getElementById('forgot-token-value').textContent = data.reset_token;
+                    document.getElementById('forgot-token-box').classList.remove('hidden');
+                    // เก็บ token ไว้ในตัวแปรชั่วคราว เผื่อกดปุ่ม "ไปตั้งรหัสผ่านใหม่" จะได้กรอกให้อัตโนมัติ
+                    window.__lastResetToken = data.reset_token;
+                }
+            } catch (e) {
+                showFieldError('forgot-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ขอรีเซ็ตรหัสผ่าน';
+            }
+        }
+
+        function goToResetWithToken() {
+            goToLoginScreen('reset');
+            if (window.__lastResetToken) {
+                document.getElementById('reset-token').value = window.__lastResetToken;
+            }
+        }
+
+        async function handleResetPassword() {
+            hideFieldError('reset-error');
+            document.getElementById('reset-success').classList.add('hidden');
+
+            const token = document.getElementById('reset-token').value.trim();
+            const newPassword = document.getElementById('reset-new-password').value;
+
+            if (!token) {
+                showFieldError('reset-error', 'กรอก reset token ก่อนครับ (ได้จากหน้า "ลืมรหัสผ่าน")');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showFieldError('reset-error', 'รหัสผ่านใหม่ต้อง >= 6 ตัวอักษร');
+                return;
+            }
+
+            const btn = document.getElementById('reset-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังตั้งรหัสผ่านใหม่...';
+
+            try {
+                const res = await fetch(apiBase() + '/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reset_token: token, new_password: newPassword })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('reset-error', data.detail || 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ');
+                    return;
+                }
+
+                document.getElementById('reset-success').textContent = data.message + ' กำลังพาไปหน้าเข้าสู่ระบบ...';
+                document.getElementById('reset-success').classList.remove('hidden');
+                document.getElementById('reset-token').value = '';
+                document.getElementById('reset-new-password').value = '';
+                window.__lastResetToken = null;
+                setTimeout(() => goToLoginScreen('login'), 1200);
+            } catch (e) {
+                showFieldError('reset-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> ยืนยันรหัสผ่านใหม่';
+            }
+        }
+
+        // บังคับให้เห็นแค่หน้า Login ตอนเปิดเว็บครั้งแรกเสมอ ไม่ว่า state เดิมจะเป็นยังไง
+        goToLoginScreen('login');
+        renderDailyIdea(); // เตรียมจุดไข่ปลา (dots) ของการ์ดไอเดียประจำวันไว้ล่วงหน้า
+    </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://cookai:cookai_password@db:5432/cookai_db
+      - SECRET_KEY=please-change-this-secret-key
+    depends_on:
+      - db
+    volumes:
+      - .:/app   # sync โค้ดกับเครื่อง host เวลาแก้ไฟล์แล้วเห็นผลทันที (เหมาะกับตอน dev)
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=cookai
+      - POSTGRES_PASSWORD=cookai_password
+      - POSTGRES_DB=cookai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - cookai_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cookai_pgdata:
