@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CookAI - ไอเดียเมนูเด็ดจากวัตถุดิบคุณ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Prompt) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        /* V1.3: emoji micro-animation (เบา ๆ) + เคารพ reduced-motion */
+        .emo { display: inline-block; transform-origin: 70% 80%; }
+        .emo-wiggle { animation: emoWiggle 2.8s ease-in-out infinite; }
+        .emo-bounce { animation: emoBounce 2.2s ease-in-out infinite; }
+        .emo-pulse  { animation: emoPulse 2.4s ease-in-out infinite; }
+        @keyframes emoWiggle { 0%,60%,100% { transform: rotate(0); } 70% { transform: rotate(-14deg); } 80% { transform: rotate(12deg); } 90% { transform: rotate(-6deg); } }
+        @keyframes emoBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes emoPulse  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+        @media (prefers-reduced-motion: reduce) { .emo-wiggle, .emo-bounce, .emo-pulse { animation: none; } }
+        .star-btn { cursor: pointer; transition: transform .1s; }
+        .star-btn:active { transform: scale(1.25); }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex justify-center items-center">
+
+    <!-- Mobile Container Emulator -->
+    <div class="w-full max-w-md bg-white min-h-screen shadow-2xl relative flex flex-col justify-between overflow-x-hidden">
+
+        <!-- ================= SCREEN LOGIN ================= -->
+        <div id="screen-login" class="screen active p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-500/30">
+                    <i class="fa-solid fa-utensils text-white text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">CookAI</h1>
+                <p class="text-gray-400 text-sm mt-1">เข้าสู่ระบบเพื่อเริ่มคิดเมนู</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="login-username" type="text" placeholder="Username"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="login-password" type="password" placeholder="Password"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="login-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleLogin()" id="login-btn"
+                class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-5">
+                ยังไม่มีบัญชี?
+                <button onclick="goToLoginScreen('register')" class="text-orange-600 font-semibold">สมัครสมาชิก</button>
+            </p>
+            <p class="text-center text-sm mt-2">
+                <button onclick="goToLoginScreen('forgot')" class="text-gray-400 hover:text-orange-600">ลืมรหัสผ่าน?</button>
+            </p>
+
+            <div class="mt-6 flex items-center gap-2 justify-center">
+                <i class="fa-solid fa-server text-gray-300 text-xs"></i>
+                <input id="api-base" value="" placeholder="(auto: same domain)"
+                    class="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 focus:outline-none focus:border-orange-300 w-48">
+            </div>
+        </div>
+
+        <!-- ================= SCREEN REGISTER ================= -->
+        <div id="screen-register" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800">สมัครสมาชิก</h1>
+                <p class="text-gray-400 text-sm mt-1">สร้างบัญชีใหม่เพื่อใช้งาน CookAI</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="reg-username" type="text" placeholder="Username (อย่างน้อย 3 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="reg-email" type="email" placeholder="Email (ไม่บังคับ)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <input id="reg-password" type="password" placeholder="Password (อย่างน้อย 6 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="register-error" class="text-red-500 text-xs mb-3 hidden"></p>
+            <p id="register-success" class="text-green-600 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleRegister()" id="register-btn"
+                class="w-full py-3.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> สมัครสมาชิก
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-5">
+                มีบัญชีอยู่แล้ว?
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">เข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN FORGOT PASSWORD ================= -->
+        <div id="screen-forgot" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-key text-orange-500 text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">ลืมรหัสผ่าน</h1>
+                <p class="text-gray-400 text-sm mt-1 px-4">กรอก username ของบัญชีคุณ ระบบจะสร้างรหัสสำหรับตั้งรหัสผ่านใหม่ให้</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="forgot-username" type="text" placeholder="Username"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="forgot-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleForgotPassword()" id="forgot-btn"
+                class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> ขอรีเซ็ตรหัสผ่าน
+            </button>
+
+            <!-- กล่องแสดงผลลัพธ์ + reset token (เฉพาะโหมด demo เพราะยังไม่มีระบบส่งอีเมลจริง) -->
+            <div id="forgot-result" class="hidden mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                <p class="text-gray-600 mb-2" id="forgot-message"></p>
+                <div id="forgot-token-box" class="hidden">
+                    <p class="text-[11px] text-gray-400 mb-1">Reset token (โหมดทดสอบ — ระบบจริงจะส่งให้ทางอีเมลแทน):</p>
+                    <p id="forgot-token-value" class="text-[11px] font-mono bg-white border border-amber-100 rounded-lg p-2 break-all"></p>
+                    <button onclick="goToResetWithToken()" class="w-full mt-3 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg">
+                        ไปตั้งรหัสผ่านใหม่ →
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-center text-sm text-gray-400 mt-6">
+                นึกออกแล้ว?
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">กลับไปเข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN RESET PASSWORD ================= -->
+        <div id="screen-reset" class="screen p-6 flex flex-col justify-center min-h-screen">
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-lock-open text-orange-500 text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">ตั้งรหัสผ่านใหม่</h1>
+                <p class="text-gray-400 text-sm mt-1">กรอก reset token ที่ได้ และรหัสผ่านใหม่ของคุณ</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <input id="reset-token" type="text" placeholder="Reset token"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-orange-500">
+                <input id="reset-new-password" type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+            </div>
+
+            <p id="reset-error" class="text-red-500 text-xs mb-3 hidden"></p>
+            <p id="reset-success" class="text-green-600 text-xs mb-3 hidden"></p>
+
+            <button onclick="handleResetPassword()" id="reset-btn"
+                class="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check"></i> ยืนยันรหัสผ่านใหม่
+            </button>
+
+            <p class="text-center text-sm text-gray-400 mt-6">
+                <button onclick="goToLoginScreen('login')" class="text-orange-600 font-semibold">กลับไปเข้าสู่ระบบ</button>
+            </p>
+        </div>
+
+        <!-- ================= SCREEN 1: DASHBOARD ================= -->
+        <div id="screen-1" class="screen p-6">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <p class="text-gray-400 text-sm">วันนี้ทำอะไรกินดี? <span class="emo emo-wiggle">👨‍🍳</span></p>
+                    <h1 id="dashboard-username" class="text-2xl font-bold text-gray-800">ห้องครัวของน้องบาส</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="dashboard-avatar" onclick="openSettings()" title="ตั้งค่าโปรไฟล์ / Personal Nutrition" class="w-12 h-12 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 transition-transform">B</button>
+                    <button onclick="showLogoutConfirm()" title="ออกจากระบบ" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all shadow-sm">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- V1.2 User Dashboard -->
+            <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm mb-5">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <p class="text-[10px] text-gray-400 uppercase font-semibold">บัญชีของคุณ</p>
+                        <h3 id="dash-plan" class="font-bold text-gray-800">กำลังโหลด...</h3>
+                    </div>
+                    <span id="dash-status" class="text-[10px] px-2 py-1 rounded-full bg-gray-100 text-gray-500">-</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-orange-50 rounded-xl py-2"><p class="text-[9px] text-gray-400">ใช้วันนี้</p><p id="dash-used" class="font-bold text-orange-600">-</p></div>
+                    <div class="bg-green-50 rounded-xl py-2"><p class="text-[9px] text-gray-400">คงเหลือ</p><p id="dash-remaining" class="font-bold text-green-600">-</p></div>
+                    <div class="bg-gray-50 rounded-xl py-2"><p class="text-[9px] text-gray-400">Limit</p><p id="dash-limit" class="font-bold text-gray-700">-</p></div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="openUpgradeFlow()" class="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-xs font-bold">อัปเกรด Plan</button>
+                    <button id="admin-btn" onclick="loadAdminDashboard()" class="hidden px-3 py-2.5 bg-gray-800 text-white rounded-xl text-xs font-bold">Admin</button>
+                </div>
+                <div id="payment-box" class="hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs">
+                    <p class="font-bold text-gray-800 mb-2">Payment Sandbox / Test Mode</p>
+                    <div id="plan-options" class="space-y-2"></div>
+                    <p id="payment-message" class="text-gray-500 mt-2"></p>
+                </div>
+            </div>
+
+            <!-- Menu Category Tabs -->
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2 px-0.5">เมนูแนะนำ</h3>
+                <div class="flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none;" id="menu-tabs">
+                    <button onclick="selectMenuCategory(this)" data-menu="ทั้งหมด" class="menu-tab active shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-orange-500 text-white shadow-sm transition-colors">ทั้งหมด</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="กะเพรา" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🌶️ กะเพรา</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ข้าวผัด" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍚 ข้าวผัด</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ไข่เจียว" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍳 ไข่เจียว</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ต้มยำ" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍲 ต้มยำ</button>
+                    <button onclick="selectMenuCategory(this)" data-menu="ผัดไทย" class="menu-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">🍜 ผัดไทย</button>
+                </div>
+            </div>
+            
+            <!-- Recipe Detail Card (โผล่มาเมื่อกดแท็บเมนูที่ไม่ใช่ "ทั้งหมด") -->
+            <div id="recipe-detail-card" class="hidden bg-white border border-orange-100 rounded-2xl p-4 mb-6 shadow-sm">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <p class="text-[10px] font-bold text-orange-500 uppercase" id="recipe-tag-label">เมนู</p>
+                        <h3 id="recipe-name" class="text-lg font-bold text-gray-800 mt-0.5">-</h3>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <span class="text-[11px] bg-gray-50 text-gray-500 px-2 py-1 rounded-lg flex items-center gap-1">
+                            <i class="fa-regular fa-clock"></i> <span id="recipe-time">-</span>
+                        </span>
+                        <span class="text-[11px] bg-gray-50 text-gray-500 px-2 py-1 rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-utensils"></i> <span id="recipe-servings">-</span>
+                        </span>
+                    </div>
+                </div>
+
+                <p class="text-xs font-semibold text-gray-500 mb-1.5">วัตถุดิบ (ต่อ 1 ที่)</p>
+                <ul id="recipe-ingredients" class="text-sm text-gray-600 space-y-1 mb-4 list-disc list-inside"></ul>
+
+                <p class="text-xs font-semibold text-gray-500 mb-1.5">วิธีทำ</p>
+                <ol id="recipe-steps" class="text-sm text-gray-600 space-y-1.5 list-decimal list-inside"></ol>
+                <button id="cook-this-btn" onclick="cookThisCatalogMenu()" class="w-full mt-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-sm shadow-md shadow-orange-500/20 flex items-center justify-center gap-2">
+                    <span class="emo emo-bounce">🍳</span> ทำเมนูนี้
+                </button>
+                <p class="text-[10px] text-gray-400 mt-1.5 text-center">ใช้สูตรเดิมนี้เลย ไม่เรียก AI และไม่หักโควตา</p>
+            </div>
+
+            <!-- Recipe Inspiration Card -->
+            <div id="daily-idea-card" class="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-4 text-white mb-6 shadow-lg shadow-orange-500/20">
+                <div class="flex justify-between items-start gap-3">
+                    <div class="min-w-0">
+                        <span class="bg-white/20 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">ไอเดียประจำวัน</span>
+                        <p id="daily-idea-title" class="text-lg font-bold mt-1">"เปลี่ยนไข่ไก่ก้นตู้ ให้เป็นเมนูระดับเชฟ" 🍳</p>
+                        <p id="daily-idea-subtitle" class="text-xs opacity-80 mt-1">ใส่วัตถุดิบดูเลยว่าทำอะไรได้บ้าง</p>
+                    </div>
+                    <button onclick="nextDailyIdea()" title="ไอเดียถัดไป" class="shrink-0 w-9 h-9 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors active:scale-95">
+                        <i class="fa-solid fa-chevron-right text-sm"></i>
+                    </button>
+                </div>
+                <div id="daily-idea-dots" class="flex gap-1.5 mt-3"></div>
+            </div>
+
+            <!-- Stats/Cooking Level -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button onclick="openHistory()" class="bg-amber-50/50 border border-amber-100 p-3 rounded-xl text-center active:scale-95 transition-transform">
+                    <p class="text-gray-400 text-[10px] font-medium">เมนูที่เคยทำแล้ว <i class="fa-solid fa-chevron-right text-[8px]"></i></p>
+                    <p id="home-completed" class="text-xl font-bold text-amber-600 mt-0.5">0 เมนู</p>
+                </button>
+                <button onclick="openSkillModal()" class="bg-orange-50/50 border border-orange-100 p-3 rounded-xl text-center active:scale-95 transition-transform">
+                    <p class="text-gray-400 text-[10px] font-medium">ระดับฝีมือ <i class="fa-solid fa-circle-info text-[9px]"></i></p>
+                    <p id="home-skill" class="text-base font-bold text-orange-600 mt-0.5 leading-tight">พ่อครัวฝึกหัด ⭐</p>
+                </button>
+            </div>
+            <button onclick="openRecipeBook()" class="w-full mb-6 py-2.5 bg-white border border-orange-200 text-orange-600 rounded-xl text-sm font-semibold hover:bg-orange-50 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-book-bookmark"></i> สมุดสูตรของฉัน
+            </button>
+
+            <div class="text-center my-6">
+                <div class="w-28 h-28 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-wand-magic-sparkles text-orange-500 text-4xl emo emo-pulse"></i>
+                </div>
+                <h2 class="text-base font-semibold text-gray-700">คิดเมนูไม่ออกใช่ไหม?</h2>
+                <p class="text-gray-400 text-xs px-8 mt-1">พิมพ์วัตถุดิบที่มีพร้อมปริมาณ แล้วให้ AI ช่วยคิดเมนูให้เลย!</p>
+            </div>
+
+            <button onclick="goToScreen(2)" class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-basket-shopping text-lg"></i>
+                ใส่วัตถุดิบคิดสูตรอาหาร
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 2: MANUAL INGREDIENT INPUT (v1.1: แทน Camera) ================= -->
+        <div id="screen-2" class="screen p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600"><i class="fa-solid fa-arrow-left"></i></button>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">🧺 วัตถุดิบของคุณ</h2>
+                    <p class="text-xs text-gray-400">ใส่ปริมาณที่ "ตั้งใจจะใช้" ในมื้อนี้ AI จะคิดจากปริมาณนี้</p>
+                </div>
+            </div>
+
+            <div id="ing-list" class="space-y-2 mb-3"></div>
+
+            <div class="flex gap-2 mb-2">
+                <button onclick="addIngredientRow(true)" class="flex-1 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-700">
+                    <i class="fa-solid fa-plus mr-1"></i> เพิ่มวัตถุดิบ
+                </button>
+                <button onclick="fillExampleIngredients()" class="px-3 py-2.5 bg-orange-50 text-orange-600 rounded-xl text-xs font-semibold hover:bg-orange-100 active:scale-95"><i class="fa-solid fa-shuffle mr-1"></i>ใช้ตัวอย่าง <span id="example-counter" class="text-[10px] opacity-70"></span></button>
+            </div>
+            <p class="text-[11px] text-gray-400 mb-5">เช่น มีหมูสับ 1 กก. แต่จะใช้แค่ 100 กรัม → ใส่ 100 กรัม</p>
+
+            <div class="mb-5">
+                <label class="text-sm font-semibold text-gray-700 block mb-2">ประเภทอาหารที่อยากกิน:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" value="อาหารจานเดียว" checked class="accent-orange-500"> อาหารจานเดียว ง่ายๆ
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" value="กับข้าวจานเด็ด" class="accent-orange-500"> กับข้าวจานเด็ด
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" value="กับแกล้ม / ทานเล่น" class="accent-orange-500"> เมนูกับแกล้ม / ทานเล่น
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 cursor-pointer">
+                        <input type="radio" name="meal-type" value="เมนูเส้น / ซุป" class="accent-orange-500"> เมนูเส้น / ซุปร้อนๆ
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-6 space-y-2">
+                <label class="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+                    <span class="text-xs text-gray-600">🌶️ เน้นรสจัดจ้าน / แซ่บ</span>
+                    <input id="pref-spicy" type="checkbox" checked class="accent-orange-500">
+                </label>
+                <label class="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+                    <span class="text-xs text-gray-600">🥦 เน้นเมนูเพื่อสุขภาพ (คลีน)</span>
+                    <input id="pref-healthy" type="checkbox" class="accent-orange-500">
+                </label>
+            </div>
+
+            <div id="analyze-error" class="hidden mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></div>
+
+            <button id="analyze-btn" onclick="analyzeFood()" class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> วิเคราะห์และคิดเมนู
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 5: RECIPE OPTIONS (ข้อมูลจาก AI) ================= -->
+        <div id="screen-5" class="screen p-6">
+            <button onclick="goToScreen(2)" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-600"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+            <h2 class="text-xl font-bold text-gray-800 mb-1">💡 เมนูที่แนะนำสำหรับคุณ</h2>
+            <p id="result-summary" class="text-xs text-gray-400 mb-3"></p>
+            <div id="mock-banner" class="hidden mb-4 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ⚠️ นี่คือผลลัพธ์จำลอง (mock) เพราะ server ยังไม่ได้ตั้งค่า GEMINI_API_KEY
+            </div>
+            <div id="recipe-list" class="space-y-4"></div>
+        </div>
+
+        <!-- ================= SCREEN 6: RECIPE DETAIL (วัตถุดิบ + Nutrition + วิธีทำ) ================= -->
+        <div id="screen-6" class="screen">
+            <div class="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 rounded-b-3xl shadow-lg relative">
+                <button onclick="goToScreen(detailBack)" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mb-4"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+                <h1 id="d-name" class="text-xl font-bold mb-1">-</h1>
+                <p id="d-desc" class="text-xs opacity-90 mb-4"></p>
+                <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
+                    <span class="bg-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i> <span id="d-time">-</span></span>
+                    <span class="bg-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-fire mr-1"></i> ความยาก: <span id="d-diff">-</span></span>
+                    <span class="bg-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-utensils mr-1"></i> <span id="d-serv">-</span></span>
+                </div>
+            </div>
+
+            <div class="p-6 pb-2">
+                <h2 class="text-sm font-bold text-gray-800 mb-3"><i class="fa-solid fa-mortar-pestle text-orange-500 mr-1"></i> วัตถุดิบและปริมาณ</h2>
+                <div id="d-ingredients" class="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100 text-xs text-gray-600"></div>
+                <p id="d-readiness" class="hidden text-[11px] text-gray-500 mt-2"></p>
+            </div>
+
+            <div class="px-6 pt-4 pb-2">
+                <h2 class="text-sm font-bold text-gray-800 mb-1"><i class="fa-solid fa-leaf text-green-500 mr-1"></i> โภชนาการโดยประมาณ (ต่อ 1 ที่)</h2>
+                <div class="grid grid-cols-4 gap-2 text-center mt-2">
+                    <div class="bg-orange-50 rounded-xl py-2"><p class="text-[10px] text-gray-400">พลังงาน</p><p class="text-sm font-bold text-orange-600"><span id="n-cal">-</span></p><p class="text-[9px] text-gray-400">kcal</p></div>
+                    <div class="bg-red-50 rounded-xl py-2"><p class="text-[10px] text-gray-400">โปรตีน</p><p class="text-sm font-bold text-red-500"><span id="n-pro">-</span></p><p class="text-[9px] text-gray-400">g</p></div>
+                    <div class="bg-amber-50 rounded-xl py-2"><p class="text-[10px] text-gray-400">คาร์บ</p><p class="text-sm font-bold text-amber-600"><span id="n-carb">-</span></p><p class="text-[9px] text-gray-400">g</p></div>
+                    <div class="bg-yellow-50 rounded-xl py-2"><p class="text-[10px] text-gray-400">ไขมัน</p><p class="text-sm font-bold text-yellow-600"><span id="n-fat">-</span></p><p class="text-[9px] text-gray-400">g</p></div>
+                </div>
+                <p id="d-disclaimer" class="text-[10px] text-gray-400 mt-2"></p>
+                <div id="guidance-box" class="hidden mt-3 rounded-xl border px-3 py-3 text-xs"></div>
+            </div>
+
+            <div class="px-6 pt-4 pb-2">
+                <h2 class="text-sm font-bold text-gray-800 mb-3"><i class="fa-solid fa-list-ol text-orange-500 mr-1"></i> วิธีทำ</h2>
+                <ol id="d-steps" class="text-sm text-gray-600 space-y-2 list-decimal list-inside"></ol>
+                <p id="d-tip" class="hidden mt-3 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2"></p>
+            </div>
+
+            <div class="p-6">
+                <button onclick="startCookMode()" class="w-full py-4 bg-orange-500 text-white font-bold rounded-xl text-center shadow-lg shadow-orange-500/20">
+                    🍳 เข้าสู่โหมดทำอาหาร (Cook Mode)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 7: COOK MODE (STEP-BY-STEP) ================= -->
+        <div id="screen-7" class="screen p-6 flex flex-col justify-between min-h-screen">
+            <div>
+                <div class="flex justify-between items-center mb-6">
+                    <span id="cook-counter" class="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full">ขั้นตอนทำอาหาร - / -</span>
+                    <button onclick="goToScreen(6)" class="text-xs text-gray-500 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-orange-100 hover:text-orange-500">ดูวัตถุดิบ</button>
+                </div>
+                <div class="w-full bg-gray-100 h-2 rounded-full mb-8">
+                    <div id="cook-progress" class="bg-orange-500 h-2 rounded-full transition-all" style="width: 0%;"></div>
+                </div>
+                <div class="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-center shadow-sm my-4">
+                    <p id="cook-step" class="text-xl font-bold text-gray-800 leading-relaxed">-</p>
+                </div>
+            </div>
+            <div class="mt-4 text-center">
+                <div class="flex justify-center gap-2">
+                    <button id="tts-toggle" onclick="ttsToggle()" class="px-4 py-2.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold hover:bg-orange-100 active:scale-95 flex items-center gap-2"><i id="tts-icon" class="fa-solid fa-volume-high"></i> <span id="tts-label">ฟังขั้นตอนนี้</span></button>
+                    <button id="tts-stop" onclick="ttsStop(true)" class="hidden px-3 py-2.5 bg-gray-100 text-gray-600 rounded-full text-sm active:scale-95" title="หยุดอ่าน"><i class="fa-solid fa-stop"></i></button>
+                </div>
+                <p id="tts-note" class="hidden text-[11px] text-gray-400 mt-2"></p>
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button id="cook-prev" onclick="cookStep(-1)" class="flex-1 py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">ย้อนกลับ</button>
+                <button id="cook-next" onclick="cookStep(1)" class="flex-1 py-3.5 bg-orange-500 text-white font-bold rounded-xl text-sm shadow-md">ถัดไป</button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 8: SUCCESS / SHARE ================= -->
+        <div id="screen-8" class="screen p-6 text-center">
+            <div class="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto my-8 text-4xl shadow-inner">
+                <span class="emo emo-bounce">🍽️</span>
+            </div>
+            
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">มื้ออร่อยพร้อมเสิร์ฟ!</h1>
+            <p class="text-gray-400 text-xs px-6 mb-2">ทำเสร็จทันใจด้วยวัตถุดิบก้นตู้เย็นของคุณเอง</p>
+            <p id="done-progress" class="text-xs font-semibold text-amber-600 mb-6 min-h-[1rem]"></p>
+
+            <!-- Cooking Score / Rating Card -->
+            <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center max-w-xs mx-auto mb-8">
+                <p class="text-xs text-gray-500 mb-2">ให้คะแนนความอร่อยของสูตรนี้</p>
+                <div id="rating-stars" class="flex justify-center gap-1.5 text-amber-400 text-2xl mb-1"></div>
+                <span id="rating-msg" class="text-[11px] text-gray-400">แตะดาวเพื่อให้คะแนน</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <button id="save-book-btn" onclick="toggleSaveRecipe()" class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl text-sm shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bookmark"></i> <span id="save-book-label">บันทึกลงสมุดสูตรส่วนตัว</span>
+                </button>
+                <p id="save-book-msg" class="text-[11px] text-gray-400 min-h-[1rem]"></p>
+                <button onclick="goToScreen(1)" class="w-full py-3.5 bg-gray-950 text-white font-semibold rounded-xl text-sm hover:bg-gray-800">
+                    ออกไปหน้าแรก
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 9: ADMIN DASHBOARD ================= -->
+        <div id="screen-9" class="screen p-6">
+            <div class="flex items-center gap-3 mb-5">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600"><i class="fa-solid fa-arrow-left"></i></button>
+                <div><h2 class="text-xl font-bold text-gray-800">Admin Dashboard</h2><p class="text-xs text-gray-400">ข้อมูลจากระบบจริง / ค่าประมาณ</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-gray-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">Users</p><p id="ad-users" class="text-xl font-bold">-</p></div>
+                <div class="bg-green-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">Paid Users</p><p id="ad-paid" class="text-xl font-bold text-green-600">-</p></div>
+                <div class="bg-orange-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">AI Today</p><p id="ad-today" class="text-xl font-bold text-orange-600">-</p></div>
+                <div class="bg-blue-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">AI Month</p><p id="ad-month" class="text-xl font-bold text-blue-600">-</p></div>
+                <div class="bg-purple-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">Estimated Cost</p><p id="ad-cost" class="text-xl font-bold text-purple-600">-</p></div>
+                <div class="bg-amber-50 rounded-xl p-3"><p class="text-[10px] text-gray-400">Revenue</p><p id="ad-revenue" class="text-xl font-bold text-amber-600">-</p></div>
+            </div>
+            <div class="mt-4 bg-white border border-gray-100 rounded-xl p-3">
+                <p class="text-xs font-bold text-gray-700 mb-2">Users</p><div id="admin-user-list" class="space-y-2 text-xs"></div>
+            </div>
+        </div>
+
+        <!-- ================= V1.3 SCREEN 10: COOKING HISTORY ================= -->
+        <div id="screen-10" class="screen p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600"><i class="fa-solid fa-arrow-left"></i></button>
+                <div><h2 class="text-xl font-bold text-gray-800">ประวัติการทำอาหาร</h2><p id="history-total" class="text-xs text-gray-400"></p></div>
+            </div>
+            <div id="history-list" class="space-y-3"></div>
+        </div>
+
+        <!-- ================= V1.3 SCREEN 11: RECIPE BOOK ================= -->
+        <div id="screen-11" class="screen p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600"><i class="fa-solid fa-arrow-left"></i></button>
+                <div><h2 class="text-xl font-bold text-gray-800">📖 สมุดสูตรของฉัน</h2><p id="book-total" class="text-xs text-gray-400"></p></div>
+            </div>
+            <div id="book-list" class="space-y-3"></div>
+        </div>
+
+        <!-- ================= V1.3 SCREEN 12: SETTINGS / PERSONAL NUTRITION ================= -->
+        <div id="screen-12" class="screen p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <button onclick="goToScreen(1)" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600"><i class="fa-solid fa-arrow-left"></i></button>
+                <div><h2 class="text-xl font-bold text-gray-800">ตั้งค่าโปรไฟล์</h2><p id="set-username" class="text-xs text-gray-400"></p></div>
+            </div>
+            <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <label class="flex justify-between items-center cursor-pointer">
+                    <span>
+                        <span class="block text-sm font-bold text-gray-800">Personal Nutrition / BMI Guidance</span>
+                        <span class="block text-[11px] text-gray-400">ปิดไว้ = ระบบทำงานเหมือนเดิมทุกอย่าง (ไม่บังคับ)</span>
+                    </span>
+                    <input id="set-enabled" type="checkbox" class="w-5 h-5 accent-orange-500" onchange="onGuidanceToggle()">
+                </label>
+                <div id="set-fields" class="mt-4 grid grid-cols-2 gap-3">
+                    <div><label class="text-[11px] text-gray-500 block mb-1">น้ำหนัก (กก.)</label><input id="set-weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" oninput="previewBmi()" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500"></div>
+                    <div><label class="text-[11px] text-gray-500 block mb-1">ส่วนสูง (ซม.)</label><input id="set-height" type="number" min="80" max="250" step="0.1" inputmode="decimal" oninput="previewBmi()" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500"></div>
+                </div>
+                <p id="set-bmi" class="mt-3 text-sm font-semibold text-gray-700 min-h-[1.25rem]"></p>
+                <div class="mt-3 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ⚠️ ข้อมูลนี้เป็นการประมาณเพื่อเป็นแนวทางทั่วไป ไม่ใช่คำแนะนำหรือการวินิจฉัยทางการแพทย์ ไม่ได้ใช้อายุ/เพศ และไม่ส่งไปให้ AI
+                    หากมีโรคประจำตัวหรือต้องการแผนโภชนาการ ควรปรึกษาแพทย์/นักกำหนดอาหาร
+                </div>
+                <div id="set-error" class="hidden mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></div>
+                <div id="set-ok" class="hidden mt-3 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2"></div>
+                <button onclick="saveSettings()" class="w-full mt-4 py-3 bg-orange-500 text-white font-bold rounded-xl text-sm">บันทึก</button>
+                <button onclick="clearNutritionData()" class="w-full mt-2 py-2 text-xs text-gray-400 hover:text-red-500">ลบน้ำหนัก/ส่วนสูงของฉัน</button>
+            </div>
+        </div>
+
+        <!-- ================= V1.3 SKILL LEVEL MODAL ================= -->
+        <div id="skill-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6" onclick="if(event.target===this)closeSkillModal()">
+            <div class="bg-white rounded-2xl p-5 w-full max-w-xs shadow-2xl">
+                <h3 class="text-lg font-bold text-gray-800 mb-1">เกณฑ์ระดับฝีมือ</h3>
+                <p class="text-[11px] text-gray-400 mb-3">ระดับนับจาก "จำนวนเมนูที่ทำเสร็จ" ไม่เกี่ยวกับการใช้ AI</p>
+                <div id="skill-list" class="space-y-2 mb-3"></div>
+                <p id="skill-next" class="text-xs text-orange-600 font-semibold mb-3"></p>
+                <button onclick="closeSkillModal()" class="w-full py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">ปิด</button>
+            </div>
+        </div>
+
+        <!-- ================= LOGOUT CONFIRM MODAL ================= -->
+        <div id="logout-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
+                <div class="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-1">ออกจากระบบ?</h3>
+                <p class="text-gray-400 text-sm mb-6">คุณต้องการออกจากระบบตอนนี้ใช่ไหม</p>
+                <div class="flex gap-3">
+                    <button onclick="hideLogoutConfirm()" class="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm hover:bg-gray-200 transition-colors">ยกเลิก</button>
+                    <button onclick="confirmLogout()" class="flex-1 py-3 bg-red-500 text-white font-semibold rounded-xl text-sm hover:bg-red-600 transition-colors">ออกจากระบบ</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script to simulate Routing/Screen Switching -->
+    <script>
+        // แสดงเฉพาะ screen เป้าหมาย ซ่อน screen อื่นทั้งหมดแบบเด็ดขาด
+        // ใช้ el.style.display ตรงๆ (inline style) แทนการพึ่ง CSS class เพียงอย่างเดียว
+        // เพราะ inline style ชนะทุก CSS rule เสมอ ไม่มีทางถูก Tailwind หรือ CSS อื่นแย่ง priority ไปได้
+        function showOnlyScreen(el) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+                screen.style.display = 'none';
+            });
+            el.classList.add('active');
+            // screen ไหนใช้ flex-col ให้คง display เป็น flex ไว้ ไม่งั้น layout จะเพี้ยน
+            el.style.display = el.classList.contains('flex') ? 'flex' : 'block';
+            window.scrollTo(0, 0);
+            // V1.3 hooks: หยุดเสียงเมื่อออกจากโหมดทำอาหาร, auto-slide เฉพาะหน้าแรก, รีเฟรชสถิติ
+            if (el.id !== 'screen-7') ttsStop(false);
+            if (el.id === 'screen-1') { startIdeaTimer(); refreshHomeStats(); } else { stopIdeaTimer(); }
+        }
+
+        function showLogoutConfirm() {
+            document.getElementById('logout-modal').classList.remove('hidden');
+        }
+        function hideLogoutConfirm() {
+            document.getElementById('logout-modal').classList.add('hidden');
+        }
+        function confirmLogout() {
+            hideLogoutConfirm();
+            handleLogout();
+        }
+
+        function selectMenuCategory(el) {
+            document.querySelectorAll('.menu-tab').forEach(tab => {
+                tab.classList.remove('active', 'bg-orange-500', 'text-white', 'shadow-sm');
+                tab.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            el.classList.add('active', 'bg-orange-500', 'text-white', 'shadow-sm');
+            el.classList.remove('bg-gray-100', 'text-gray-600');
+
+            showRecipeForCategory(el.dataset.menu);
+        }
+
+        // ---------- ข้อมูลสูตรอาหาร (mock data สำหรับ demo — ยังไม่ได้มาจาก AI จริง) ----------
+        const recipesData = {
+            'กะเพรา': {
+                name: 'กะเพราหมูสับไข่ดาว',
+                time: '15 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'หมูสับ 150 กรัม',
+                    'ใบกะเพรา 1 กำมือ',
+                    'พริกขี้หนู 5-8 เม็ด (ซอย)',
+                    'กระเทียม 4 กลีบ (สับ)',
+                    'ซอสหอยนางรม 1.5 ช้อนโต๊ะ',
+                    'ซีอิ๊วขาว 1 ช้อนโต๊ะ',
+                    'น้ำตาลทราย 1 ช้อนชา',
+                    'ไข่ไก่ 1 ฟอง',
+                    'น้ำมันพืช 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะไฟแรง ใส่น้ำมัน 1 ช้อนโต๊ะ ผัดกระเทียม-พริกให้หอม',
+                    'ใส่หมูสับ ผัดจนสุกและแตกเป็นเม็ด ๆ',
+                    'ปรุงรสด้วยซอสหอยนางรม ซีอิ๊วขาว น้ำตาล ผัดให้เข้ากัน',
+                    'ใส่ใบกะเพรา ผัดไฟแรงเร็ว ๆ แล้วปิดไฟ',
+                    'ทอดไข่ดาวแยกในกระทะอีกใบ ราดบนข้าวสวยพร้อมเสิร์ฟ',
+                ],
+            },
+            'ข้าวผัด': {
+                name: 'ข้าวผัดหมูใส่ไข่',
+                time: '12 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'ข้าวสวย (ค้างคืนยิ่งดี) 1.5 ถ้วย',
+                    'หมูสับหรือหมูหั่นชิ้น 100 กรัม',
+                    'ไข่ไก่ 1 ฟอง',
+                    'กระเทียม 3 กลีบ (สับ)',
+                    'ต้นหอม 1 ต้น (หั่นท่อน)',
+                    'ซีอิ๊วขาว 1 ช้อนโต๊ะ',
+                    'ซอสปรุงรส 1 ช้อนชา',
+                    'น้ำมันพืช 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะไฟแรง ใส่น้ำมัน ผัดกระเทียมให้หอม',
+                    'ใส่หมูผัดจนสุก ดันไปข้างกระทะ ตอกไข่ลงผัดให้กระจาย',
+                    'ใส่ข้าวสวย คลุกให้เข้ากัน ผัดจนข้าวร้อนทั่วและไม่ติดกระทะ',
+                    'ปรุงรสด้วยซีอิ๊วขาวและซอสปรุงรส ผัดให้เข้าสีทั่วเม็ดข้าว',
+                    'ใส่ต้นหอม ผัดเร็ว ๆ อีกครั้งแล้วปิดไฟ เสิร์ฟพร้อมมะนาว',
+                ],
+            },
+            'ไข่เจียว': {
+                name: 'ไข่เจียวหมูสับฟูนุ่ม',
+                time: '8 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'ไข่ไก่ 2 ฟอง',
+                    'หมูสับ 50 กรัม (ใส่หรือไม่ใส่ก็ได้)',
+                    'น้ำปลา 1 ช้อนชา',
+                    'ต้นหอมซอย 1 ช้อนโต๊ะ (ถ้ามี)',
+                    'น้ำมันพืชสำหรับทอด 4-5 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตีไข่กับน้ำปลาและหมูสับให้เข้ากัน ตีแรง ๆ ให้มีฟองอากาศ (เคล็ดลับให้ไข่ฟู)',
+                    'ตั้งกระทะใส่น้ำมันให้ร้อนจัด (สำคัญมาก ไม่งั้นไข่จะไม่ฟู)',
+                    'เทไข่ลงตรงกลางกระทะทีเดียว รอให้ขอบไข่เริ่มฟูและเปลี่ยนสี',
+                    'พลิกด้านเมื่อเหลืองกรอบ ทอดอีกด้านจนสุกทั่ว ตักขึ้นสะเด็ดน้ำมัน',
+                ],
+            },
+            'ต้มยำ': {
+                name: 'ต้มยำกุ้งน้ำข้น',
+                time: '25 นาที',
+                servings: '2 ที่',
+                ingredients: [
+                    'กุ้งสด 8-10 ตัว',
+                    'เห็ดฟาง 1 ถ้วย (ผ่าครึ่ง)',
+                    'ตะไคร้ 2 ต้น (ทุบหั่นท่อน)',
+                    'ข่า 4-5 แว่น',
+                    'ใบมะกรูด 4-5 ใบ (ฉีก)',
+                    'พริกขี้หนู 8-10 เม็ด (ทุบ)',
+                    'น้ำพริกเผา 2 ช้อนโต๊ะ',
+                    'นมข้นจืดหรือกะทิ 1/2 ถ้วย',
+                    'น้ำปลา + น้ำมะนาว อย่างละ 2-3 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ต้มน้ำเปล่า 3 ถ้วยให้เดือด ใส่ตะไคร้ ข่า ใบมะกรูด ต้มให้หอม',
+                    'ใส่เห็ดฟางและกุ้ง ต้มจนกุ้งเริ่มเปลี่ยนสี',
+                    'ใส่น้ำพริกเผาและนมข้นจืด คนให้ละลายเข้ากัน',
+                    'ปรุงรสด้วยน้ำปลา ใส่พริกขี้หนูทุบ ต้มต่ออีกครู่',
+                    'ปิดไฟ บีบมะนาวสด คนเบา ๆ แล้วตักเสิร์ฟทันที',
+                ],
+            },
+            'ผัดไทย': {
+                name: 'ผัดไทยกุ้งสด',
+                time: '20 นาที',
+                servings: '1 ที่',
+                ingredients: [
+                    'เส้นจันท์แช่น้ำนิ่ม 150 กรัม',
+                    'กุ้งสด 5-6 ตัว',
+                    'เต้าหู้เหลือง 1/4 ถ้วย (หั่นเต๋า)',
+                    'ไข่ไก่ 1 ฟอง',
+                    'ถั่วงอก 1 ถ้วย',
+                    'ใบกุยช่าย 4-5 ต้น (หั่นท่อน)',
+                    'ซอสผัดไทย (มะขามเปียก น้ำตาลปี๊บ น้ำปลา) 3 ช้อนโต๊ะ',
+                    'ถั่วลิสงป่น 2 ช้อนโต๊ะ',
+                ],
+                steps: [
+                    'ตั้งกระทะใส่น้ำมัน ผัดกุ้งและเต้าหู้จนสุกหอม ตักพักไว้',
+                    'ใส่เส้นจันท์ลงผัดพร้อมซอสผัดไทย ผัดจนเส้นนิ่มดูดซอสเข้าเนื้อ',
+                    'ดันเส้นไปข้างกระทะ ตอกไข่ลงผัดให้สุก แล้วคลุกรวมกับเส้น',
+                    'ใส่กุ้ง เต้าหู้ ถั่วงอก ใบกุยช่าย ผัดเร็ว ๆ ให้เข้ากัน',
+                    'โรยถั่วลิสงป่น เสิร์ฟพร้อมถั่วงอกสดและมะนาว',
+                ],
+            },
+        };
+
+        function showRecipeForCategory(menu) {
+            const card = document.getElementById('recipe-detail-card');
+            const recipe = recipesData[menu];
+
+            if (!recipe) {
+                // เลือก "ทั้งหมด" หรือเมนูที่ยังไม่มีข้อมูล → ซ่อนการ์ดสูตร
+                card.classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('recipe-tag-label').textContent = menu;
+            document.getElementById('recipe-name').textContent = recipe.name;
+            document.getElementById('recipe-time').textContent = recipe.time;
+            document.getElementById('recipe-servings').textContent = recipe.servings;
+
+            const ingredientsEl = document.getElementById('recipe-ingredients');
+            ingredientsEl.innerHTML = recipe.ingredients.map(i => '<li>' + i + '</li>').join('');
+
+            const stepsEl = document.getElementById('recipe-steps');
+            stepsEl.innerHTML = recipe.steps.map(s => '<li>' + s + '</li>').join('');
+
+            card.classList.remove('hidden');
+        }
+
+        // ---------- ไอเดียประจำวัน (สลับได้หลายข้อความ) ----------
+        const dailyIdeas = [
+            { title: '"เปลี่ยนไข่ไก่ก้นตู้ ให้เป็นเมนูระดับเชฟ" 🍳', subtitle: 'ใส่วัตถุดิบดูเลยว่าทำอะไรได้บ้าง' },
+            { title: '"เหลือข้าวสวยค้างคืน อย่าทิ้ง!" 🍚', subtitle: 'เอามาผัดข้าวหอม ๆ ได้ง่ายกว่าที่คิด' },
+            { title: '"หมูสับแช่แข็งชิ้นสุดท้าย ทำอะไรดี?" 🐷', subtitle: 'กะเพราหรือลูกชิ้นทอด เลือกได้ตามใจ' },
+            { title: '"ผักในตู้เย็นใกล้เหี่ยว รีบจัดการก่อนสาย" 🥬', subtitle: 'ผัดรวมมิตรง่าย ๆ ได้ใน 10 นาที' },
+        ];
+        let dailyIdeaIndex = 0;
+
+        function renderDailyIdea() {
+            const idea = dailyIdeas[dailyIdeaIndex];
+            document.getElementById('daily-idea-title').textContent = idea.title;
+            document.getElementById('daily-idea-subtitle').textContent = idea.subtitle;
+
+            const dotsEl = document.getElementById('daily-idea-dots');
+            dotsEl.innerHTML = dailyIdeas
+                .map((_, i) => '<span class="h-1.5 rounded-full transition-all ' +
+                    (i === dailyIdeaIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40') + '"></span>')
+                .join('');
+        }
+
+        function nextDailyIdea() {
+            dailyIdeaIndex = (dailyIdeaIndex + 1) % dailyIdeas.length;
+            renderDailyIdea();
+        }
+
+        // ================= v1.1: Manual Ingredient + AI Analysis =================
+        const UNITS = ['กรัม', 'กิโลกรัม', 'ฟอง', 'ลูก', 'ช้อนโต๊ะ', 'ช้อนชา', 'ต้น', 'กลีบ', 'มิลลิลิตร', 'ถ้วย'];
+        let ingredients = [];          // [{id, name, quantity, unit}]
+        let ingSeq = 0;
+        let analysis = null;           // ผลจาก /analyze-food
+        let currentRecipe = null;
+        let cookIndex = 0;
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function fmtNum(n) {
+            const x = Number(n);
+            return Number.isFinite(x) ? (Number.isInteger(x) ? String(x) : String(Math.round(x * 10) / 10)) : esc(n);
+        }
+
+        function renderIngredientRows(focusId) {
+            const list = document.getElementById('ing-list');
+            list.innerHTML = ingredients.map(i => `
+                <div class="flex gap-2 items-center" data-id="${i.id}">
+                    <input type="text" maxlength="60" placeholder="ชื่อวัตถุดิบ" value="${esc(i.name)}"
+                        oninput="updateIngredient(${i.id}, 'name', this.value)"
+                        class="ing-name flex-1 min-w-0 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                    <input type="number" min="0" step="any" inputmode="decimal" placeholder="ปริมาณ" value="${i.quantity === '' ? '' : esc(i.quantity)}"
+                        oninput="updateIngredient(${i.id}, 'quantity', this.value)"
+                        class="w-20 px-2 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:border-orange-500">
+                    <select onchange="updateIngredient(${i.id}, 'unit', this.value)"
+                        class="w-[88px] px-1 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-orange-500">
+                        ${UNITS.map(u => `<option value="${u}" ${u === i.unit ? 'selected' : ''}>${u}</option>`).join('')}
+                    </select>
+                    <button onclick="removeIngredientRow(${i.id})" title="ลบ" class="w-9 h-9 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </div>`).join('');
+            if (focusId) {
+                const el = list.querySelector(`[data-id="${focusId}"] .ing-name`);
+                if (el) el.focus();
+            }
+        }
+
+        function addIngredientRow(focus) {
+            if (ingredients.length >= 30) { showAnalyzeError('เพิ่มได้สูงสุด 30 รายการ'); return; }
+            const id = ++ingSeq;
+            ingredients.push({ id, name: '', quantity: '', unit: 'กรัม' });
+            renderIngredientRows(focus ? id : null);
+        }
+
+        function removeIngredientRow(id) {
+            ingredients = ingredients.filter(i => i.id !== id);
+            if (ingredients.length === 0) addIngredientRow(false); else renderIngredientRows();
+        }
+
+        function updateIngredient(id, field, value) {
+            const row = ingredients.find(i => i.id === id);
+            if (row) row[field] = value;   // ไม่ re-render ตอนพิมพ์ เพื่อไม่ให้ cursor หลุด
+        }
+
+        // V1.3: ตัวอย่างวัตถุดิบ — กดซ้ำเปลี่ยนชุดไปเรื่อย ๆ ไม่ซ้ำจนกว่าจะครบทุกชุด (หน่วยต้องอยู่ใน UNITS เสมอ)
+        const EXAMPLE_SETS = [
+            [['หมูสับ', 100, 'กรัม'], ['ไข่ไก่', 2, 'ฟอง'], ['ต้นหอม', 20, 'กรัม'], ['พริก', 10, 'กรัม']],
+            [['อกไก่', 200, 'กรัม'], ['กระเทียม', 5, 'กลีบ'], ['พริก', 8, 'กรัม'], ['ใบกะเพรา', 1, 'ถ้วย']],
+            [['กุ้ง', 150, 'กรัม'], ['เห็ดฟาง', 100, 'กรัม'], ['ตะไคร้', 2, 'ต้น'], ['มะนาว', 1, 'ลูก']],
+            [['ข้าวสวย', 1.5, 'ถ้วย'], ['ไข่ไก่', 1, 'ฟอง'], ['ต้นหอม', 1, 'ต้น'], ['กระเทียม', 3, 'กลีบ']],
+            [['เต้าหู้ขาว', 150, 'กรัม'], ['ผักกาดขาว', 100, 'กรัม'], ['หมูสับ', 50, 'กรัม'], ['กระเทียม', 3, 'กลีบ']],
+            [['ปลาแซลมอน', 150, 'กรัม'], ['ผักโขม', 80, 'กรัม'], ['น้ำมันมะกอก', 1, 'ช้อนโต๊ะ'], ['มะนาว', 1, 'ลูก']],
+        ];
+        let exampleBag = [];
+        let lastExample = -1;
+
+        function nextExampleIndex() {
+            if (exampleBag.length === 0) {
+                exampleBag = EXAMPLE_SETS.map((_, i) => i);
+                for (let i = exampleBag.length - 1; i > 0; i--) {   // shuffle
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [exampleBag[i], exampleBag[j]] = [exampleBag[j], exampleBag[i]];
+                }
+                if (exampleBag[0] === lastExample && exampleBag.length > 1) exampleBag.push(exampleBag.shift());
+            }
+            lastExample = exampleBag.shift();
+            return lastExample;
+        }
+
+        function fillExampleIngredients() {
+            const idx = nextExampleIndex();
+            ingredients = [];
+            EXAMPLE_SETS[idx].forEach(([name, quantity, unit]) => ingredients.push({ id: ++ingSeq, name, quantity, unit }));
+            renderIngredientRows();
+            document.getElementById('example-counter').textContent = '(' + (idx + 1) + '/' + EXAMPLE_SETS.length + ')';
+        }
+
+        function showAnalyzeError(msg) {
+            const el = document.getElementById('analyze-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        // ตรวจรายการ: ข้ามแถวที่ว่างทั้งแถว, แถวที่กรอกไม่ครบ = error
+        function collectIngredients() {
+            const out = [];
+            for (const [idx, i] of ingredients.entries()) {
+                const name = String(i.name).trim();
+                const qtyStr = String(i.quantity).trim();
+                if (!name && !qtyStr) continue;
+                if (!name) throw new Error('แถวที่ ' + (idx + 1) + ': ใส่ชื่อวัตถุดิบด้วย');
+                const quantity = Number(qtyStr);
+                if (!qtyStr || !Number.isFinite(quantity) || quantity <= 0)
+                    throw new Error('"' + name + '": ปริมาณต้องเป็นตัวเลขมากกว่า 0');
+                out.push({ name, quantity, unit: i.unit });
+            }
+            if (out.length === 0) throw new Error('ใส่วัตถุดิบอย่างน้อย 1 อย่าง พร้อมปริมาณ');
+            return out;
+        }
+
+        async function analyzeFood() {
+            document.getElementById('analyze-error').classList.add('hidden');
+            let items;
+            try { items = collectIngredients(); }
+            catch (e) { showAnalyzeError(e.message); return; }
+
+            const mealEl = document.querySelector('input[name="meal-type"]:checked');
+            const body = {
+                ingredients: items,
+                preferences: {
+                    meal_type: mealEl ? mealEl.value : null,
+                    spicy: document.getElementById('pref-spicy').checked,
+                    healthy: document.getElementById('pref-healthy').checked,
+                },
+            };
+
+            const btn = document.getElementById('analyze-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI กำลังคิดเมนู... (อาจใช้เวลา 10-30 วินาที)';
+            try {
+                const res = await fetch(apiBase() + '/analyze-food', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentToken },
+                    body: JSON.stringify(body),
+                });
+                let data = {};
+                try { data = await res.json(); } catch (_) {}
+                if (res.status === 401) { currentToken = null; goToLoginScreen('login'); return; }
+                if (!res.ok) {
+                    const detail = Array.isArray(data.detail) ? 'ข้อมูลวัตถุดิบไม่ถูกต้อง ตรวจชื่อ/ปริมาณ/หน่วยอีกครั้ง' : data.detail;
+                    showAnalyzeError(detail || 'วิเคราะห์ไม่สำเร็จ (' + res.status + ')');
+                    return;
+                }
+                analysis = data;
+                renderRecipeList(items);
+                goToScreen(5);
+            } catch (e) {
+                showAnalyzeError('เชื่อมต่อ API ไม่ได้ — เช็คว่า server ยังรันอยู่');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> วิเคราะห์และคิดเมนู';
+            }
+        }
+
+        const RECIPE_ICONS = ['🍳', '🍲', '🍛'];
+
+        function renderRecipeList(items) {
+            document.getElementById('result-summary').textContent =
+                'จากวัตถุดิบ: ' + items.map(i => i.name + ' ' + fmtNum(i.quantity) + ' ' + i.unit).join(', ');
+            document.getElementById('mock-banner').classList.toggle('hidden', analysis.source !== 'mock');
+            document.getElementById('recipe-list').innerHTML = analysis.recommendations.map((r, idx) => `
+                <div onclick="showRecipeDetail(${idx})" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-orange-400 transition-all cursor-pointer flex gap-4">
+                    <div class="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center text-3xl shrink-0"><span class="emo emo-wiggle" style="animation-delay:${idx * 0.6}s">${RECIPE_ICONS[idx % 3]}</span></div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-gray-800 text-sm">${idx + 1}. ${esc(r.name)}</h3>
+                        <p class="text-gray-400 text-[11px] line-clamp-2 mt-0.5">${esc(r.description)}</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-md font-medium">⏱️ ${fmtNum(r.time_minutes)} นาที</span>
+                            <span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-md">⭐ ${esc(r.difficulty)}</span>
+                            <span class="bg-green-50 text-green-700 text-[10px] px-2 py-0.5 rounded-md">🔥 ~${fmtNum(r.nutrition.calories)} kcal</span>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function showRecipeDetail(idx) {
+            openRecipeDetail(analysis.recommendations[idx], 5);
+        }
+
+        const DEFAULT_DISCLAIMER = 'ค่าโภชนาการเป็นการประมาณเพื่อเป็นแนวทางเท่านั้น ไม่ใช่คำแนะนำทางการแพทย์';
+
+        function openRecipeDetail(r, backScreen) {
+            detailBack = backScreen;
+            originalRecipe = r;
+            renderRecipeDetail(r);
+            goToScreen(6);
+            loadGuidanceFor(r);
+        }
+
+        function renderRecipeDetail(r) {
+            currentRecipe = r;
+            document.getElementById('d-name').textContent = r.name;
+            document.getElementById('d-desc').textContent = r.description;
+            document.getElementById('d-time').textContent = fmtNum(r.time_minutes) + ' นาที';
+            document.getElementById('d-diff').textContent = r.difficulty || '-';
+            document.getElementById('d-serv').textContent = fmtNum(r.servings) + ' ที่';
+            const isCatalog = r.source === 'catalog';
+            document.getElementById('d-ingredients').innerHTML = r.ingredients.map((i, k) => isCatalog ? `
+                <label class="flex justify-between items-center gap-2 border-b border-gray-200/40 pb-2 last:border-0 last:pb-0 cursor-pointer">
+                    <span class="flex items-center gap-2"><input type="checkbox" class="ready-chk accent-orange-500" onchange="updateReadiness()"> ${esc(i.name)}</span>
+                    <span class="font-bold text-gray-800 text-right">${esc(i.qtyText || '')}</span>
+                </label>` : `
+                <div class="flex justify-between border-b border-gray-200/40 pb-2 last:border-0 last:pb-0">
+                    <span>${esc(i.name)} <span class="text-[10px] ${i.from_user ? 'text-orange-500' : 'text-gray-400'}">(${i.from_user ? 'วัตถุดิบของคุณ' : 'เครื่องปรุงพื้นฐาน'})</span></span>
+                    <span class="font-bold text-gray-800">${fmtNum(i.quantity)} ${esc(i.unit)}</span>
+                </div>`).join('');
+            const rd = document.getElementById('d-readiness');
+            rd.classList.toggle('hidden', !isCatalog);
+            if (isCatalog) updateReadiness();
+            document.getElementById('n-cal').textContent = fmtNum(r.nutrition.calories);
+            document.getElementById('n-pro').textContent = fmtNum(r.nutrition.protein_g);
+            document.getElementById('n-carb').textContent = fmtNum(r.nutrition.carbs_g);
+            document.getElementById('n-fat').textContent = fmtNum(r.nutrition.fat_g);
+            document.getElementById('d-disclaimer').textContent = (analysis && analysis.disclaimer) || DEFAULT_DISCLAIMER;
+            document.getElementById('d-steps').innerHTML = r.steps.map(s => '<li>' + esc(s) + '</li>').join('');
+            const tip = document.getElementById('d-tip');
+            tip.textContent = r.tip ? '💡 ' + r.tip : '';
+            tip.classList.toggle('hidden', !r.tip);
+        }
+
+        function startCookMode() {
+            cookIndex = 0;
+            cookEventId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('e' + Date.now() + Math.random().toString(16).slice(2));
+            currentHistoryId = null; currentSavedId = null;
+            renderCookStep();
+            goToScreen(7);
+            initTtsUi();
+        }
+
+        function renderCookStep() {
+            const steps = currentRecipe.steps;
+            document.getElementById('cook-counter').textContent = 'ขั้นตอนทำอาหาร ' + (cookIndex + 1) + ' / ' + steps.length;
+            document.getElementById('cook-progress').style.width = ((cookIndex + 1) / steps.length * 100) + '%';
+            document.getElementById('cook-step').textContent = steps[cookIndex];
+            document.getElementById('cook-prev').textContent = cookIndex === 0 ? 'ดูวัตถุดิบ' : 'ย้อนกลับ';
+            document.getElementById('cook-next').textContent = cookIndex === steps.length - 1 ? 'ทำเสร็จเรียบร้อย' : 'ถัดไป';
+            if (ttsAuto) speakCurrentStep();
+        }
+
+        function cookStep(dir) {
+            const last = currentRecipe.steps.length - 1;
+            if (dir < 0 && cookIndex === 0) { goToScreen(6); return; }
+            if (dir > 0 && cookIndex === last) { finishCooking(); return; }
+            cookIndex += dir;
+            renderCookStep();
+        }
+
+        function goToScreen(screenNumber) {
+            const target = document.getElementById('screen-' + screenNumber);
+            // ด่านป้องกัน: ห้ามเข้าหน้าแอป (screen 1-8) ถ้ายังไม่ได้ login
+            if (!currentToken) {
+                goToLoginScreen('login');
+                return;
+            }
+            if (screenNumber === 2 && ingredients.length === 0) addIngredientRow(false);
+            showOnlyScreen(target);
+        }
+
+        // ---------- เชื่อมกับ CookAI API (login / register / logout) ----------
+        let currentToken = null; // เก็บ token ไว้ใน memory เท่านั้น รีเฟรชหน้าแล้วต้อง login ใหม่
+
+        function apiBase() {
+            const v = document.getElementById('api-base').value.trim();
+            return (v || window.location.origin).replace(/\/$/, '');
+        }
+
+        function goToLoginScreen(name) {
+            showOnlyScreen(document.getElementById('screen-' + name));
+        }
+
+        function showFieldError(elId, msg) {
+            const el = document.getElementById(elId);
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function hideFieldError(elId) {
+            document.getElementById(elId).classList.add('hidden');
+        }
+
+        async function handleRegister() {
+            hideFieldError('register-error');
+            document.getElementById('register-success').classList.add('hidden');
+
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+
+            if (username.length < 3 || password.length < 6) {
+                showFieldError('register-error', 'username ต้อง >= 3 ตัวอักษร และ password ต้อง >= 6 ตัวอักษร');
+                return;
+            }
+
+            const btn = document.getElementById('register-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสมัคร...';
+
+            try {
+                const res = await fetch(apiBase() + '/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, email: email || null })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('register-error', data.detail || 'สมัครไม่สำเร็จ');
+                } else {
+                    document.getElementById('register-success').textContent = 'สมัครสำเร็จ! กำลังพาไปหน้าเข้าสู่ระบบ...';
+                    document.getElementById('register-success').classList.remove('hidden');
+                    document.getElementById('login-username').value = username;
+                    setTimeout(() => goToLoginScreen('login'), 900);
+                }
+            } catch (e) {
+                showFieldError('register-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> สมัครสมาชิก';
+            }
+        }
+
+        async function handleLogin() {
+            hideFieldError('login-error');
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (!username || !password) {
+                showFieldError('login-error', 'กรอก username และ password ให้ครบ');
+                return;
+            }
+
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ...';
+
+            try {
+                const res = await fetch(apiBase() + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('login-error', data.detail || 'เข้าสู่ระบบไม่สำเร็จ');
+                    return;
+                }
+                currentToken = data.access_token;
+                await loadProfileIntoDashboard();
+                goToScreen(1); // เข้าแอปจริง ไปหน้า Dashboard (screen-1 เดิมของ CookAI)
+            } catch (e) {
+                showFieldError('login-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ';
+            }
+        }
+
+        async function loadProfileIntoDashboard() {
+            const res = await fetch(apiBase() + '/me', {
+                headers: { 'Authorization': 'Bearer ' + currentToken }
+            });
+            const user = await res.json();
+            if (!res.ok) return;
+
+            document.getElementById('dashboard-username').textContent = 'ห้องครัวของ ' + user.username;
+            document.getElementById('dashboard-avatar').textContent = user.username.charAt(0).toUpperCase();
+            currentUserRole = user.role || 'user';
+            await loadV12Dashboard();
+            loadNutProfile();
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(apiBase() + '/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + currentToken }
+                });
+            } catch (e) {
+                // แม้ logout ที่ server ไม่สำเร็จ ก็เคลียร์ token ฝั่ง client อยู่ดี
+            }
+            currentToken = null;
+            ingredients = []; analysis = null; currentRecipe = null;
+            originalRecipe = null; nutProfile = null; cookEventId = null; currentHistoryId = null; currentSavedId = null;
+            ttsStop(false); stopIdeaTimer(); exampleBag = []; lastExample = -1;
+            document.getElementById('home-completed').textContent = '0 เมนู';
+            document.getElementById('home-skill').textContent = 'พ่อครัวฝึกหัด ⭐';
+            document.getElementById('login-password').value = '';
+            goToLoginScreen('login');
+        }
+
+        // ---------- ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่ ----------
+        async function handleForgotPassword() {
+            hideFieldError('forgot-error');
+            document.getElementById('forgot-result').classList.add('hidden');
+            document.getElementById('forgot-token-box').classList.add('hidden');
+
+            const username = document.getElementById('forgot-username').value.trim();
+            if (!username) {
+                showFieldError('forgot-error', 'กรอก username ก่อนครับ');
+                return;
+            }
+
+            const btn = document.getElementById('forgot-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งคำขอ...';
+
+            try {
+                const res = await fetch(apiBase() + '/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('forgot-error', data.detail || 'ขอรีเซ็ตรหัสผ่านไม่สำเร็จ');
+                    return;
+                }
+
+                document.getElementById('forgot-message').textContent = data.message;
+                document.getElementById('forgot-result').classList.remove('hidden');
+
+                if (data.reset_token) {
+                    // โหมด demo: ระบบยังไม่มีการส่งอีเมลจริง เลยโชว์ token ให้ในหน้าเว็บเลย
+                    document.getElementById('forgot-token-value').textContent = data.reset_token;
+                    document.getElementById('forgot-token-box').classList.remove('hidden');
+                    // เก็บ token ไว้ในตัวแปรชั่วคราว เผื่อกดปุ่ม "ไปตั้งรหัสผ่านใหม่" จะได้กรอกให้อัตโนมัติ
+                    window.__lastResetToken = data.reset_token;
+                }
+            } catch (e) {
+                showFieldError('forgot-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ขอรีเซ็ตรหัสผ่าน';
+            }
+        }
+
+        function goToResetWithToken() {
+            goToLoginScreen('reset');
+            if (window.__lastResetToken) {
+                document.getElementById('reset-token').value = window.__lastResetToken;
+            }
+        }
+
+        async function handleResetPassword() {
+            hideFieldError('reset-error');
+            document.getElementById('reset-success').classList.add('hidden');
+
+            const token = document.getElementById('reset-token').value.trim();
+            const newPassword = document.getElementById('reset-new-password').value;
+
+            if (!token) {
+                showFieldError('reset-error', 'กรอก reset token ก่อนครับ (ได้จากหน้า "ลืมรหัสผ่าน")');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showFieldError('reset-error', 'รหัสผ่านใหม่ต้อง >= 6 ตัวอักษร');
+                return;
+            }
+
+            const btn = document.getElementById('reset-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังตั้งรหัสผ่านใหม่...';
+
+            try {
+                const res = await fetch(apiBase() + '/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reset_token: token, new_password: newPassword })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showFieldError('reset-error', data.detail || 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ');
+                    return;
+                }
+
+                document.getElementById('reset-success').textContent = data.message + ' กำลังพาไปหน้าเข้าสู่ระบบ...';
+                document.getElementById('reset-success').classList.remove('hidden');
+                document.getElementById('reset-token').value = '';
+                document.getElementById('reset-new-password').value = '';
+                window.__lastResetToken = null;
+                setTimeout(() => goToLoginScreen('login'), 1200);
+            } catch (e) {
+                showFieldError('reset-error', 'เชื่อมต่อ API ไม่ได้ — เช็คว่ารัน uvicorn อยู่ และ URL ด้านล่างถูกต้องไหม');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> ยืนยันรหัสผ่านใหม่';
+            }
+        }
+
+
+        // ---------- V1.2 Dashboard / Subscription / Admin ----------
+        async function loadV12Dashboard() {
+            if (!currentToken) return;
+            try {
+                const res = await fetch(apiBase() + '/dashboard', {headers: {'Authorization': 'Bearer ' + currentToken}});
+                if (res.status === 401) { currentToken = null; goToLoginScreen('login'); return; }
+                const d = await res.json();
+                if (!res.ok) return;
+                document.getElementById('dash-plan').textContent = d.plan.name + ' · ' + Number(d.plan.price).toLocaleString() + ' บาท';
+                document.getElementById('dash-status').textContent = d.subscription.status;
+                document.getElementById('dash-used').textContent = d.usage.used;
+                document.getElementById('dash-remaining').textContent = d.usage.remaining;
+                document.getElementById('dash-limit').textContent = d.usage.limit;
+                if (currentUserRole === 'admin') document.getElementById('admin-btn').classList.remove('hidden');
+            } catch (_) {}
+        }
+
+        let currentUserRole = 'user';
+        async function openUpgradeFlow() {
+            const box = document.getElementById('payment-box');
+            box.classList.toggle('hidden');
+            if (box.classList.contains('hidden')) return;
+            try {
+                const res = await fetch(apiBase() + '/subscription/plans');
+                const plans = await res.json();
+                document.getElementById('plan-options').innerHTML = plans.filter(p => p.price > 0 && p.is_active).map(p =>
+                    `<button onclick="createSandboxPayment(${p.id})" class="w-full text-left bg-white border border-amber-200 rounded-lg p-3 hover:border-orange-400"><b>${esc(p.name)}</b> · ${Number(p.price).toLocaleString()} บาท · ${p.usage_limit} AI/day · ${p.duration_days} วัน</button>`
+                ).join('');
+            } catch (_) { document.getElementById('payment-message').textContent = 'โหลด Plan ไม่สำเร็จ'; }
+        }
+        async function createSandboxPayment(planId) {
+            const msg=document.getElementById('payment-message'); msg.textContent='กำลังสร้าง Payment...';
+            try {
+                const res=await fetch(apiBase()+'/payment/create',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentToken},body:JSON.stringify({plan_id:planId})});
+                const p=await res.json(); if(!res.ok){msg.textContent=p.detail||'สร้าง Payment ไม่สำเร็จ';return;}
+                msg.innerHTML='สร้าง Transaction <b>'+esc(p.transaction_id)+'</b> สถานะ Pending · <button class="underline font-bold" onclick="completeSandboxPayment('+p.id+',true)">จำลอง Payment Success</button> · <button class="underline" onclick="completeSandboxPayment('+p.id+',false)">Failed</button>';
+            }catch(_){msg.textContent='เชื่อมต่อ Payment ไม่ได้';}
+        }
+        async function completeSandboxPayment(id, success) {
+            const msg=document.getElementById('payment-message'); msg.textContent='กำลังยืนยันผล Payment...';
+            const res=await fetch(apiBase()+'/payment/webhook?payment_id='+id+'&success='+success,{method:'POST',headers:{'Authorization':'Bearer '+currentToken}});
+            const p=await res.json(); msg.textContent=res.ok ? ('Payment: '+p.status+' — Subscription อัปเดตแล้ว') : (p.detail||'เกิดข้อผิดพลาด');
+            await loadV12Dashboard();
+        }
+        async function loadAdminDashboard() {
+            if (currentUserRole !== 'admin') { alert('ไม่มีสิทธิ์ Admin'); return; }
+            const res=await fetch(apiBase()+'/admin/dashboard',{headers:{'Authorization':'Bearer '+currentToken}});
+            const d=await res.json(); if(!res.ok){alert(d.detail||'โหลด Admin ไม่สำเร็จ');return;}
+            document.getElementById('ad-users').textContent=d.total_users;
+            document.getElementById('ad-paid').textContent=d.paid_users;
+            document.getElementById('ad-today').textContent=d.ai_usage_today;
+            document.getElementById('ad-month').textContent=d.ai_usage_this_month;
+            document.getElementById('ad-cost').textContent=Number(d.estimated_ai_cost).toLocaleString()+' ฿';
+            document.getElementById('ad-revenue').textContent=Number(d.subscription_revenue).toLocaleString()+' ฿';
+            const ur=await fetch(apiBase()+'/admin/users',{headers:{'Authorization':'Bearer '+currentToken}}); const users=await ur.json();
+            document.getElementById('admin-user-list').innerHTML=Array.isArray(users)?users.map(u=>`<div class="flex justify-between border-b pb-2"><span><b>${esc(u.username)}</b> · ${esc(u.role)}</span><span>${esc(u.plan_name)} · ${u.usage_used}/${u.usage_limit}</span></div>`).join(''):'-';
+            showOnlyScreen(document.getElementById('screen-9'));
+        }
+
+        // =====================================================================
+        // V1.3 — ฟีเจอร์ฝั่งหน้าเว็บ (ไม่แตะ Core AI: /analyze-food ยังเรียกเหมือนเดิม)
+        // =====================================================================
+        let detailBack = 5;
+        let originalRecipe = null;
+        let cookEventId = null;
+        let currentHistoryId = null;
+        let currentSavedId = null;
+        let nutProfile = null;
+        let lastSkillName = null;
+
+        async function api(path, opts) {
+            opts = opts || {};
+            const headers = { 'Authorization': 'Bearer ' + currentToken };
+            if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+            try {
+                const res = await fetch(apiBase() + path, {
+                    method: opts.method || 'GET', headers,
+                    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+                });
+                let data = {};
+                try { data = await res.json(); } catch (_) {}
+                if (res.status === 401) { currentToken = null; goToLoginScreen('login'); }
+                return { ok: res.ok, status: res.status, data };
+            } catch (_) {
+                return { ok: false, status: 0, data: { detail: 'เชื่อมต่อ API ไม่ได้' } };
+            }
+        }
+
+        function fmtDate(iso) {
+            try { return new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }); }
+            catch (_) { return ''; }
+        }
+        function starsHtml(n) {
+            n = Number(n) || 0;
+            let out = '';
+            for (let i = 1; i <= 5; i++) out += '<i class="' + (i <= n ? 'fa-solid' : 'fa-regular') + ' fa-star"></i>';
+            return '<span class="text-amber-400 text-xs">' + out + '</span>';
+        }
+
+        // ---------- 1) สถิติหน้าแรก: จำนวนเมนูที่ทำแล้ว + ระดับฝีมือ ----------
+        async function refreshHomeStats() {
+            if (!currentToken) return;
+            const r = await api('/stats');
+            if (!r.ok) return;
+            document.getElementById('home-completed').textContent = r.data.completed_count + ' เมนู';
+            document.getElementById('home-skill').textContent = r.data.skill.current.name;
+            lastSkillName = r.data.skill.current.name;
+        }
+
+        async function openHistory() {
+            goToScreen(10);
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<p class="text-xs text-gray-400">กำลังโหลด...</p>';
+            const r = await api('/history?limit=100');
+            if (!r.ok) { list.innerHTML = '<p class="text-xs text-red-500">โหลดประวัติไม่สำเร็จ</p>'; return; }
+            document.getElementById('history-total').textContent = 'ทำเสร็จแล้วทั้งหมด ' + r.data.total + ' เมนู';
+            window.__history = r.data.items;
+            list.innerHTML = r.data.items.length ? r.data.items.map((h, i) => `
+                <button onclick="openHistoryRecipe(${i})" class="w-full text-left bg-white border border-gray-100 rounded-2xl p-3 shadow-sm hover:border-orange-300 flex justify-between items-center gap-3">
+                    <span class="min-w-0">
+                        <span class="block font-bold text-sm text-gray-800 truncate">${esc(h.recipe_name)}</span>
+                        <span class="block text-[11px] text-gray-400">${esc(fmtDate(h.completed_at))}</span>
+                    </span>
+                    <span class="shrink-0">${h.rating ? starsHtml(h.rating) : '<span class="text-[10px] text-gray-300">ยังไม่ให้คะแนน</span>'}</span>
+                </button>`).join('')
+                : '<p class="text-sm text-gray-400 text-center py-10">ยังไม่มีประวัติ ลองทำเมนูแรกดูสิ 🍳</p>';
+        }
+        function openHistoryRecipe(i) { const h = (window.__history || [])[i]; if (h) openRecipeDetail(h.recipe, 10); }
+
+        // ---------- 2) ระดับฝีมือ ----------
+        async function openSkillModal() {
+            document.getElementById('skill-modal').classList.remove('hidden');
+            const list = document.getElementById('skill-list');
+            list.innerHTML = '<p class="text-xs text-gray-400">กำลังโหลด...</p>';
+            const r = await api('/skill-levels');
+            if (!r.ok) { list.innerHTML = '<p class="text-xs text-red-500">โหลดเกณฑ์ไม่สำเร็จ</p>'; return; }
+            const d = r.data;
+            list.innerHTML = d.levels.map(l => {
+                const cur = l.min_completed === d.skill.current.min_completed;
+                const reached = d.completed_count >= l.min_completed;
+                return `<div class="flex justify-between items-center px-3 py-2 rounded-xl text-xs ${cur ? 'bg-orange-100 text-orange-700 font-bold' : (reached ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500')}">
+                    <span>${esc(l.name)}</span><span>${l.min_completed === 0 ? 'เริ่มต้น' : 'ทำครบ ' + l.min_completed + ' เมนู'}</span></div>`;
+            }).join('');
+            document.getElementById('skill-next').textContent = d.skill.next
+                ? 'ตอนนี้ทำแล้ว ' + d.completed_count + ' เมนู — อีก ' + d.skill.remaining_to_next + ' เมนูจะเลื่อนเป็น "' + d.skill.next.name + '"'
+                : 'ตอนนี้ทำแล้ว ' + d.completed_count + ' เมนู — คุณอยู่ระดับสูงสุดแล้ว 🎉';
+        }
+        function closeSkillModal() { document.getElementById('skill-modal').classList.add('hidden'); }
+
+        // ---------- 3) ทำเมนูนี้ (เมนูแนะนำหน้าแรก) — ใช้สูตรเดิม ไม่เรียก AI ----------
+        const CATALOG_META = {
+            'กะเพรา':  { time_minutes: 15, difficulty: 'ง่าย',   servings: 1, nutrition: { calories: 520, protein_g: 28, carbs_g: 45, fat_g: 25 } },
+            'ข้าวผัด':  { time_minutes: 12, difficulty: 'ง่าย',   servings: 1, nutrition: { calories: 560, protein_g: 22, carbs_g: 70, fat_g: 20 } },
+            'ไข่เจียว': { time_minutes: 8,  difficulty: 'ง่าย',   servings: 1, nutrition: { calories: 380, protein_g: 20, carbs_g: 2,  fat_g: 32 } },
+            'ต้มยำ':    { time_minutes: 25, difficulty: 'ปานกลาง', servings: 2, nutrition: { calories: 280, protein_g: 25, carbs_g: 12, fat_g: 14 } },
+            'ผัดไทย':   { time_minutes: 20, difficulty: 'ปานกลาง', servings: 1, nutrition: { calories: 600, protein_g: 25, carbs_g: 80, fat_g: 20 } },
+        };
+
+        function catalogRecipe(menu) {
+            const base = recipesData[menu], meta = CATALOG_META[menu];
+            if (!base || !meta) return null;
+            return {
+                source: 'catalog', name: base.name, description: 'สูตรแนะนำของ CookAI (สูตรสำเร็จรูป ไม่ได้สร้างจาก AI) — โภชนาการเป็นค่าประมาณ',
+                time_minutes: meta.time_minutes, difficulty: meta.difficulty, servings: meta.servings,
+                ingredients: base.ingredients.map(t => {
+                    const m = t.match(/^(.*?)\s+(\d.*)$/);
+                    return { name: m ? m[1] : t, qtyText: m ? m[2] : '', quantity: 0, unit: '', from_user: false };
+                }),
+                nutrition: Object.assign({}, meta.nutrition), steps: base.steps.slice(),
+            };
+        }
+
+        function cookThisCatalogMenu() {
+            const active = document.querySelector('.menu-tab.active');
+            const r = active ? catalogRecipe(active.dataset.menu) : null;
+            if (!r) return;
+            openRecipeDetail(r, 1);      // ดูวัตถุดิบ + โภชนาการก่อน แล้วค่อยกดเข้า Cook Mode
+        }
+
+        function updateReadiness() {
+            const boxes = document.querySelectorAll('.ready-chk');
+            const done = Array.from(boxes).filter(b => b.checked).length;
+            const el = document.getElementById('d-readiness');
+            el.textContent = done === boxes.length
+                ? '✅ วัตถุดิบพร้อมแล้ว เริ่มทำได้เลย!'
+                : 'ติ๊กวัตถุดิบที่คุณมีแล้ว: พร้อม ' + done + ' / ' + boxes.length + ' รายการ';
+        }
+
+        // ---------- 4) ทำเสร็จ → บันทึกประวัติ (idempotent) + คะแนนดาว + สมุดสูตร ----------
+        function renderRatingStars(n) {
+            document.getElementById('rating-stars').innerHTML = [1, 2, 3, 4, 5].map(i =>
+                `<i onclick="setRating(${i})" class="star-btn ${i <= n ? 'fa-solid' : 'fa-regular'} fa-star" role="button" aria-label="${i} ดาว"></i>`).join('');
+        }
+
+        async function finishCooking() {
+            ttsStop(false);
+            goToScreen(8);
+            renderRatingStars(0);
+            document.getElementById('rating-msg').textContent = 'กำลังบันทึกประวัติ...';
+            document.getElementById('done-progress').textContent = '';
+            document.getElementById('save-book-msg').textContent = '';
+            setSaveButton(false);
+            if (!cookEventId || !currentRecipe) return;
+            const r = await api('/history/complete', { method: 'POST', body: { event_id: cookEventId, recipe: stripForSave(currentRecipe) } });
+            if (!r.ok) { document.getElementById('rating-msg').textContent = 'บันทึกประวัติไม่สำเร็จ (' + (r.data.detail || r.status) + ')'; return; }
+            currentHistoryId = r.data.history_id;
+            const prev = lastSkillName;
+            lastSkillName = r.data.skill.current.name;
+            document.getElementById('home-completed').textContent = r.data.completed_count + ' เมนู';
+            document.getElementById('home-skill').textContent = lastSkillName;
+            document.getElementById('done-progress').textContent =
+                'ทำเสร็จแล้วทั้งหมด ' + r.data.completed_count + ' เมนู' + (prev && prev !== lastSkillName ? ' · 🎉 เลื่อนระดับเป็น ' + lastSkillName : '');
+            document.getElementById('rating-msg').textContent = 'แตะดาวเพื่อให้คะแนน';
+            // สูตรนี้อยู่ในสมุดแล้วหรือยัง
+            const b = await api('/recipe-book');
+            if (b.ok) {
+                const hit = b.data.items.find(x => x.recipe_name === currentRecipe.name);
+                if (hit) { currentSavedId = hit.id; setSaveButton(true); renderRatingStars(hit.rating || 0); }
+            }
+        }
+
+        // ตัดฟิลด์ฝั่งหน้าเว็บที่ไม่จำเป็นก่อนเก็บ (เก็บสูตรตามที่แสดงอยู่ รวมกรณีปรับสัดส่วน)
+        function stripForSave(r) { return JSON.parse(JSON.stringify(r)); }
+
+        async function setRating(n) {
+            if (!currentHistoryId) { document.getElementById('rating-msg').textContent = 'รอบันทึกประวัติสักครู่...'; return; }
+            const r = await api('/history/' + currentHistoryId + '/rating', { method: 'PUT', body: { rating: n } });
+            if (!r.ok) { document.getElementById('rating-msg').textContent = 'ให้คะแนนไม่สำเร็จ'; return; }
+            renderRatingStars(n);
+            document.getElementById('rating-msg').textContent = 'บันทึกคะแนน ' + n + ' ดาวแล้ว';
+        }
+
+        function setSaveButton(saved) {
+            document.getElementById('save-book-label').textContent = saved ? 'บันทึกในสมุดสูตรแล้ว (แตะเพื่อลบ)' : 'บันทึกลงสมุดสูตรส่วนตัว';
+            document.querySelector('#save-book-btn i').className = (saved ? 'fa-solid' : 'fa-regular') + ' fa-bookmark';
+        }
+
+        async function toggleSaveRecipe() {
+            if (!currentRecipe) return;
+            const msg = document.getElementById('save-book-msg');
+            const btn = document.getElementById('save-book-btn');
+            btn.disabled = true;
+            try {
+                if (currentSavedId) {
+                    const r = await api('/recipe-book/' + currentSavedId, { method: 'DELETE' });
+                    if (r.ok) { currentSavedId = null; setSaveButton(false); msg.textContent = 'ลบออกจากสมุดสูตรแล้ว'; }
+                    else msg.textContent = 'ลบไม่สำเร็จ';
+                } else {
+                    const stars = document.querySelectorAll('#rating-stars .fa-solid').length;
+                    const body = { recipe: stripForSave(currentRecipe) };
+                    if (stars > 0) body.rating = stars;
+                    const r = await api('/recipe-book', { method: 'POST', body });
+                    if (r.ok) { currentSavedId = r.data.id; setSaveButton(true); msg.textContent = 'บันทึกลงสมุดสูตรของคุณแล้ว'; }
+                    else msg.textContent = 'บันทึกไม่สำเร็จ (' + (r.data.detail || r.status) + ')';
+                }
+            } finally { btn.disabled = false; }
+        }
+
+        async function openRecipeBook() {
+            goToScreen(11);
+            const list = document.getElementById('book-list');
+            list.innerHTML = '<p class="text-xs text-gray-400">กำลังโหลด...</p>';
+            const r = await api('/recipe-book');
+            if (!r.ok) { list.innerHTML = '<p class="text-xs text-red-500">โหลดสมุดสูตรไม่สำเร็จ</p>'; return; }
+            document.getElementById('book-total').textContent = 'บันทึกไว้ ' + r.data.total + ' สูตร';
+            window.__book = r.data.items;
+            list.innerHTML = r.data.items.length ? r.data.items.map((b, i) => `
+                <div class="bg-white border border-gray-100 rounded-2xl p-3 shadow-sm flex items-center gap-3">
+                    <button onclick="openBookRecipe(${i})" class="flex-1 min-w-0 text-left">
+                        <span class="block font-bold text-sm text-gray-800 truncate">${esc(b.recipe_name)}</span>
+                        <span class="block mt-0.5">${b.rating ? starsHtml(b.rating) : '<span class="text-[10px] text-gray-300">ยังไม่ให้คะแนน</span>'}</span>
+                    </button>
+                    <button onclick="removeFromBook(${b.id})" title="ลบ" class="w-9 h-9 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                </div>`).join('')
+                : '<p class="text-sm text-gray-400 text-center py-10">ยังไม่มีสูตรที่บันทึกไว้<br>หลังทำอาหารเสร็จ กด "บันทึกลงสมุดสูตร" ได้เลย 📖</p>';
+        }
+        function openBookRecipe(i) { const b = (window.__book || [])[i]; if (b) openRecipeDetail(b.recipe, 11); }
+        async function removeFromBook(id) {
+            const r = await api('/recipe-book/' + id, { method: 'DELETE' });
+            if (r.ok) openRecipeBook();
+        }
+
+        // ---------- 5) เสียงอ่านขั้นตอน (Text-to-Speech ของเบราว์เซอร์ ไม่เรียก AI) ----------
+        const ttsSupported = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+        let ttsAuto = false;        // true = อ่านต่อเนื่องเมื่อเปลี่ยนขั้นตอน
+        let ttsPaused = false;
+
+        function initTtsUi() {
+            ttsStop(false);
+            const note = document.getElementById('tts-note');
+            if (!ttsSupported) {
+                document.getElementById('tts-toggle').disabled = true;
+                document.getElementById('tts-toggle').classList.add('opacity-50');
+                note.textContent = 'อุปกรณ์/เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง';
+                note.classList.remove('hidden');
+            } else { note.classList.add('hidden'); updateTtsUi(); }
+        }
+
+        function updateTtsUi() {
+            const speaking = ttsSupported && ttsAuto && !ttsPaused;
+            document.getElementById('tts-icon').className = 'fa-solid ' + (speaking ? 'fa-pause' : (ttsPaused ? 'fa-play' : 'fa-volume-high'));
+            document.getElementById('tts-label').textContent = speaking ? 'พักเสียง' : (ttsPaused ? 'อ่านต่อ' : 'ฟังขั้นตอนนี้');
+            document.getElementById('tts-stop').classList.toggle('hidden', !(ttsAuto || ttsPaused));
+        }
+
+        function speakCurrentStep() {
+            if (!ttsSupported || !currentRecipe) return;
+            window.speechSynthesis.cancel();
+            const text = 'ขั้นตอนที่ ' + (cookIndex + 1) + ' ' + currentRecipe.steps[cookIndex];
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'th-TH';
+            const v = window.speechSynthesis.getVoices().find(x => (x.lang || '').toLowerCase().startsWith('th'));
+            if (v) u.voice = v;
+            ttsPaused = false;
+            window.speechSynthesis.speak(u);
+            updateTtsUi();
+        }
+
+        function ttsToggle() {
+            if (!ttsSupported) return;
+            if (ttsAuto && !ttsPaused) { window.speechSynthesis.pause(); ttsPaused = true; }
+            else if (ttsAuto && ttsPaused) { window.speechSynthesis.resume(); ttsPaused = false; }
+            else { ttsAuto = true; speakCurrentStep(); }
+            updateTtsUi();
+        }
+
+        function ttsStop(updateUi) {
+            ttsAuto = false; ttsPaused = false;
+            if (ttsSupported) { try { window.speechSynthesis.cancel(); } catch (_) {} }
+            if (updateUi !== false && document.getElementById('tts-icon')) updateTtsUi();
+        }
+
+        // ---------- 6) Auto-slide ไอเดียประจำวัน ----------
+        let ideaTimer = null;
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function startIdeaTimer() {
+            stopIdeaTimer();
+            if (reducedMotion) return;      // ผู้ใช้ขอลดการเคลื่อนไหว → ไม่เลื่อนเอง (ยังกดลูกศรได้)
+            ideaTimer = setInterval(() => { if (!document.hidden) nextDailyIdea(); }, 6000);
+        }
+        function stopIdeaTimer() { if (ideaTimer) { clearInterval(ideaTimer); ideaTimer = null; } }
+        (function bindIdeaPause() {
+            const card = document.getElementById('daily-idea-card');
+            if (!card) return;
+            ['mouseenter', 'touchstart', 'focusin'].forEach(ev => card.addEventListener(ev, stopIdeaTimer, { passive: true }));
+            ['mouseleave', 'touchend', 'focusout'].forEach(ev => card.addEventListener(ev, () => {
+                if (document.getElementById('screen-1').classList.contains('active')) startIdeaTimer();
+            }, { passive: true }));
+        })();
+
+        // ---------- 7) โปรไฟล์ / Personal Nutrition ----------
+        async function loadNutProfile() {
+            const r = await api('/profile/nutrition');
+            if (r.ok) nutProfile = r.data;
+        }
+
+        async function openSettings() {
+            goToScreen(12);
+            document.getElementById('set-error').classList.add('hidden');
+            document.getElementById('set-ok').classList.add('hidden');
+            document.getElementById('set-username').textContent = document.getElementById('dashboard-username').textContent;
+            await loadNutProfile();
+            const p = nutProfile || {};
+            document.getElementById('set-enabled').checked = !!p.guidance_enabled;
+            document.getElementById('set-weight').value = p.weight_kg || '';
+            document.getElementById('set-height').value = p.height_cm || '';
+            previewBmi();
+        }
+
+        function previewBmi() {
+            const w = parseFloat(document.getElementById('set-weight').value);
+            const h = parseFloat(document.getElementById('set-height').value);
+            const el = document.getElementById('set-bmi');
+            if (w > 0 && h > 0) {
+                const bmi = Math.round(w / Math.pow(h / 100, 2) * 10) / 10;
+                const cat = bmi < 18.5 ? 'ต่ำกว่าเกณฑ์ทั่วไป' : bmi < 23 ? 'อยู่ในเกณฑ์ทั่วไป' : bmi < 25 ? 'เริ่มสูงกว่าเกณฑ์' : 'สูงกว่าเกณฑ์ทั่วไป';
+                el.textContent = 'BMI ≈ ' + bmi + ' (' + cat + ') — เพื่อเป็นข้อมูลเบื้องต้นเท่านั้น';
+            } else el.textContent = '';
+        }
+
+        function onGuidanceToggle() {
+            const on = document.getElementById('set-enabled').checked;
+            if (on) document.getElementById('set-error').classList.add('hidden');
+        }
+
+        async function saveSettings() {
+            const err = document.getElementById('set-error'), ok = document.getElementById('set-ok');
+            err.classList.add('hidden'); ok.classList.add('hidden');
+            const w = document.getElementById('set-weight').value, h = document.getElementById('set-height').value;
+            const enabled = document.getElementById('set-enabled').checked;
+            if (enabled && (!w || !h)) { err.textContent = 'ใส่น้ำหนักและส่วนสูงก่อนเปิดโหมดนี้'; err.classList.remove('hidden'); return; }
+            const r = await api('/profile/nutrition', { method: 'PUT', body: {
+                weight_kg: w ? Number(w) : null, height_cm: h ? Number(h) : null, guidance_enabled: enabled } });
+            if (!r.ok) {
+                err.textContent = Array.isArray(r.data.detail) ? 'น้ำหนัก 20-300 กก. และส่วนสูง 80-250 ซม.' : (r.data.detail || 'บันทึกไม่สำเร็จ');
+                err.classList.remove('hidden'); return;
+            }
+            nutProfile = r.data;
+            ok.textContent = enabled ? 'บันทึกแล้ว — เปิด Personal Nutrition (ค่าประมาณ ไม่ใช่คำแนะนำทางการแพทย์)' : 'บันทึกแล้ว — ปิด Personal Nutrition (ระบบทำงานเหมือนเดิม)';
+            ok.classList.remove('hidden');
+            previewBmi();
+        }
+
+        async function clearNutritionData() {
+            const r = await api('/profile/nutrition', { method: 'PUT', body: { weight_kg: null, height_cm: null, guidance_enabled: false } });
+            if (r.ok) { nutProfile = r.data; openSettings(); }
+        }
+
+        // แสดงเตือน/ปุ่มปรับสารอาหารบนหน้ารายละเอียดสูตร — เฉพาะเมื่อเปิดโหมดนี้ (ปิด = ไม่ทำอะไร)
+        async function loadGuidanceFor(recipe) {
+            const box = document.getElementById('guidance-box');
+            box.classList.add('hidden'); box.innerHTML = '';
+            if (!nutProfile || !nutProfile.guidance_enabled) return;
+            const base = originalRecipe || recipe;
+            const r = await api('/nutrition/guidance', { method: 'POST', body: { recipe: stripForSave(base) } });
+            if (!r.ok || !r.data.enabled || !r.data.warning) return;
+            const d = r.data;
+            window.__adj = d.adjusted;
+            const tone = d.level === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-900' : d.level === 'ok' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-blue-50 border-blue-200 text-blue-800';
+            box.className = 'mt-3 rounded-xl border px-3 py-3 text-xs ' + tone;
+            box.innerHTML = `<p class="font-bold mb-1">Personal Nutrition (ค่าประมาณ)</p><p>${esc(d.warning)}</p>
+                ${d.bmi ? `<p class="mt-1 opacity-80">BMI ≈ ${esc(d.bmi)} (${esc(d.bmi_category)}) · เป้าหมายประมาณ ${esc(d.target_kcal)} kcal/มื้อ</p>` : ''}
+                ${d.level === 'warn' && d.adjusted && base.source !== 'catalog' ? `<button onclick="applyAdjusted()" class="mt-2 w-full py-2 bg-orange-500 text-white font-bold rounded-lg">ปรับสารอาหารให้เหมาะกับฉัน</button>` : ''}
+                ${d.level === 'warn' && base.source === 'catalog' ? `<p class="mt-1">สูตรสำเร็จรูปนี้ลองแบ่งกินประมาณ ${Math.round(d.factor * 100)}% ของที่ได้</p>` : ''}
+                <p class="mt-2 text-[10px] opacity-70">${esc(d.disclaimer)}</p>`;
+        }
+
+        function applyAdjusted() {
+            const adj = window.__adj;
+            if (!adj) return;
+            renderRecipeDetail(adj);
+            const box = document.getElementById('guidance-box');
+            box.className = 'mt-3 rounded-xl border px-3 py-3 text-xs bg-orange-50 border-orange-200 text-orange-900';
+            box.innerHTML = `<p class="font-bold mb-1">ปรับสัดส่วนเป็น ~${Math.round((adj.portion_factor || 1) * 100)}% แล้ว (ลดปริมาณเท่านั้น ไม่เกินที่คุณใส่)</p>
+                <p>ตัวเลขในขั้นตอนทำอาจยังอ้างปริมาณเดิม ให้ใช้ตามรายการวัตถุดิบด้านบน · ค่าโภชนาการเป็นค่าประมาณ</p>
+                <button onclick="revertAdjusted()" class="mt-2 underline font-semibold">กลับไปใช้สูตรเดิม</button>`;
+        }
+        function revertAdjusted() { renderRecipeDetail(originalRecipe); loadGuidanceFor(originalRecipe); }
+
+
+        // บังคับให้เห็นแค่หน้า Login ตอนเปิดเว็บครั้งแรกเสมอ ไม่ว่า state เดิมจะเป็นยังไง
+        goToLoginScreen('login');
+        renderDailyIdea(); // เตรียมจุดไข่ปลา (dots) ของการ์ดไอเดียประจำวันไว้ล่วงหน้า
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+import os
+import secrets
+import datetime
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+
+from database import get_db
+import models
+
+# --- ตั้งค่า (ใน production ควรอ่านจาก environment variable เสมอ อย่า hardcode) ---
+_PLACEHOLDER_KEYS = {"", "change-me", "change-this-secret-in-production", "please-change-this-secret-key"}
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if SECRET_KEY in _PLACEHOLDER_KEYS:
+    # ไม่ใช้ค่า placeholder ที่ใครก็รู้ (ปลอม token ได้) -> สุ่มใหม่ต่อการรัน (token เก่าหมดอายุเมื่อ restart)
+    # ตั้ง SECRET_KEY ที่เดายากใน .env เพื่อให้ login ค้างข้าม restart
+    import warnings
+    warnings.warn("SECRET_KEY ไม่ได้ตั้งค่า/เป็น placeholder: ใช้คีย์สุ่มชั่วคราว")
+    SECRET_KEY = secrets.token_urlsafe(48)
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # token อยู่ได้ 24 ชั่วโมง
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# blacklist token แบบง่าย ๆ เก็บใน memory (พอสำหรับงานเรียน/dev)
+# หมายเหตุ: จะรีเซ็ตทุกครั้งที่ container restart และใช้ไม่ได้ถ้ามีหลาย instance
+# ใน production จริงควรเก็บใน Redis แทน
+token_blacklist: set[str] = set()
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def generate_reset_token() -> str:
+    """สุ่ม token สำหรับ flow ลืมรหัสผ่าน (ใช้ครั้งเดียว หมดอายุใน 15 นาที)"""
+    return secrets.token_urlsafe(32)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> models.User:
+    """ใช้เป็น dependency ใน endpoint ที่ต้อง login ก่อนถึงจะเข้าถึงได้"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="ไม่สามารถยืนยันตัวตนได้ กรุณาเข้าสู่ระบบใหม่",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if token in token_blacklist:
+        raise credentials_exception
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user

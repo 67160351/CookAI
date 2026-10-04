@@ -1,0 +1,26 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://cookai:cookai_password@db:5432/cookai_db
+      - SECRET_KEY=${SECRET_KEY:?ตั้ง SECRET_KEY ในไฟล์ .env ก่อน}
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=cookai
+      - POSTGRES_PASSWORD=cookai_password
+      - POSTGRES_DB=cookai_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - cookai_v13_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cookai_v13_pgdata:
